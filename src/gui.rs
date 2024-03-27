@@ -1,8 +1,6 @@
 use egui::{Align2, Context, Visuals};
 
 use egui::epaint::Shadow;
-use egui::TextStyle::Heading;
-
 use egui_plot::{Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
@@ -28,7 +26,7 @@ impl EguiRenderer {
         let egui_context = Context::default();
         let id = egui_context.viewport_id();
 
-        const BORDER_RADIUS: f32 = 2.0;
+        const BORDER_RADIUS: f32 = 5.0;
 
         let visuals = Visuals {
             window_rounding: egui::Rounding::same(BORDER_RADIUS),
@@ -113,7 +111,7 @@ pub fn gui(ui: &Context,stats: &Stats) {
         .default_open(false)
         .default_width(400.0)
         .resizable(false)
-        .anchor(Align2::LEFT_TOP, [0.0, 0.0])
+        .anchor(Align2::LEFT_TOP, [10.0, 10.0])
         .show(ui, |ui| {
             ui.collapsing("sin",|ui|{
                 let sin: PlotPoints = (0..100).map(|i|{
