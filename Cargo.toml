@@ -1,0 +1,23 @@
+[package]
+name = "ecosystem_simulation"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = { version = "0.29.15", features = ["rwh_05"] }
+egui-wgpu = "0.26.2"
+pollster = "0.3.0"
+wgpu = "0.19.3"
+env_logger = "0.11.3"
+bytemuck = { version = "1.15.0", features = ["derive"] }
+anyhow = "1.0.81"
+cfg-if = "1.0.0"
+log = "0.4.21"
+egui-winit = "0.26.2"
+egui = "0.26.2"
+egui_plot = "0.26.2"
+
+[profile.dev]
+opt-level = 1
