@@ -1,6 +1,7 @@
 use egui::{Align2, Context, Visuals};
 
 use egui::epaint::Shadow;
+use egui::TextStyle::Heading;
 
 use egui_plot::{Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -108,34 +109,33 @@ impl EguiRenderer {
 }
 
 pub fn gui(ui: &Context,stats: &Stats) {
-    egui::Window::new("FPS")
+    egui::Window::new("Statistics")
         .default_open(false)
         .default_width(400.0)
         .resizable(false)
         .anchor(Align2::LEFT_TOP, [0.0, 0.0])
         .show(ui, |ui| {
-            let fps =Line::new(PlotPoints::new(stats.fps.clone()));
-            let fps = fps.fill(0.);
+            ui.collapsing("sin",|ui|{
+                let sin: PlotPoints = (0..100).map(|i|{
+                    let x = i as f64 * 0.1;
+                    [x,x.sin()]
+                }).collect();
+                let sin = Line::new(sin).fill(0.);
 
-            Plot::new("fps").view_aspect(2.0).show(ui, |plot_ui| {
-                plot_ui.line(fps);
+                Plot::new("sin").view_aspect(2.0).show(ui, |plot_ui| {
+                    plot_ui.line(sin);
+                });
             });
-        });
 
-    egui::Window::new("Sin")
-        .default_open(false)
-        .default_width(400.0)
-        .resizable(false)
-        .anchor(Align2::LEFT_TOP, [400., 0.0])
-        .show(ui, |ui| {
-            let sin: PlotPoints = (0..100).map(|i|{
-                let x = i as f64 * 0.1;
-                [x,x.sin()]
-            }).collect();
-            let sin = Line::new(sin).fill(0.);
+            ui.collapsing("fps",|ui|{
+                let fps =Line::new(PlotPoints::new(stats.fps.clone()));
+                let fps = fps.fill(0.);
 
-            Plot::new("sin").view_aspect(2.0).show(ui, |plot_ui| {
-                plot_ui.line(sin);
+                Plot::new("fps").view_aspect(2.0).show(ui, |plot_ui| {
+                    plot_ui.line(fps);
+                });
             });
+
+
         });
 }

@@ -26,8 +26,6 @@ use crate::statistics::Stats;
 fn main() {
     pollster::block_on(run());
 }
-
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Instance {
@@ -36,13 +34,7 @@ struct Instance {
     pad:[u32;3], //align to 16 bytes
 }
 
-/*#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Camera {
-    position: [f32; 2],
-}*/
-
-struct State {
+struct Main {
     device: Device,
     queue: Queue,
     compute: Compute,
@@ -52,7 +44,7 @@ struct State {
     stats: Stats,
 }
 
-impl State {
+impl Main {
     async fn new(window: Arc<Window>) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -143,7 +135,7 @@ pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
 
-    let mut state = State::new(window).await;
+    let mut state = Main::new(window).await;
 
     let mut timer = SystemTime::now();
     let mut frames = 0;
