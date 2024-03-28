@@ -2,6 +2,7 @@ mod gui;
 mod statistics;
 mod compute;
 mod render;
+mod animal;
 
 use render::Render;
 use compute::Compute;

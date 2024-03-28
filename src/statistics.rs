@@ -1,4 +1,3 @@
-#[derive(Default)]
 pub struct Stats{
     pub fps: Vec<[f64;2]>,
     step: usize,
