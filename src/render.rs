@@ -5,7 +5,7 @@ use wgpu::{Adapter, BindingType, Buffer, Device, Queue, ShaderModule, Surface, T
 use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
 use winit::window::Window;
-use crate::{Instance};
+use crate::animal::Animal;
 use crate::gui::{EguiRenderer, gui};
 use crate::statistics::Stats;
 
@@ -46,6 +46,7 @@ pub struct Render{
     triangle_buffer: Buffer,
     index_buffer: Buffer,
     egui: EguiRenderer,
+    render_passes: Vec<fn()>,
 }
 
 impl Render{
@@ -131,7 +132,7 @@ impl Render{
                     ],
                 },
                     wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Instance>() as wgpu::BufferAddress,
+                        array_stride: std::mem::size_of::<Animal>() as wgpu::BufferAddress,
                         step_mode: wgpu::VertexStepMode::Instance,
                         attributes: &[
                             wgpu::VertexAttribute {
@@ -194,6 +195,9 @@ impl Render{
             1,
             &window,
         );
+
+        let mut render_passes=Vec::new();
+
         Self{
             window,
             surface,
@@ -206,10 +210,11 @@ impl Render{
             triangle_buffer,
             index_buffer,
             egui,
+            render_passes,
         }
     }
 
-    pub fn render(&mut self,device: &Device,queue: &Queue,stats: &Stats, instances: &[Instance], instance_buffer: &Buffer) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, device: &Device, queue: &Queue, stats: &Stats, instances: u32, instance_buffer: &Buffer) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,
@@ -220,6 +225,10 @@ impl Render{
             mip_level_count: None,
             base_array_layer: 0,
             array_layer_count: None,
+        });
+
+        self.render_passes.iter().for_each(|pass|{
+            pass()
         });
 
         let mut encoder = device
@@ -252,7 +261,7 @@ impl Render{
         render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
         render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..instances.len() as u32);
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..instances);
         drop(render_pass);
 
         let screen_descriptor = ScreenDescriptor {

@@ -3,6 +3,7 @@ mod statistics;
 mod compute;
 mod render;
 mod animal;
+mod plants;
 
 use render::Render;
 use compute::Compute;
@@ -21,27 +22,23 @@ use winit::{
 };
 use std::sync::Arc;
 use std::time::SystemTime;
-
-use crate::statistics::Stats;
+use animal::*;
+use statistics::Stats;
+use crate::plants::Plants;
 
 fn main() {
     pollster::block_on(run());
-}
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Instance {
-    position: [f32; 2],
-    color: [f32; 3],
-    pad:[u32;3], //align to 16 bytes
 }
 
 struct Main {
     device: Device,
     queue: Queue,
-    compute: Compute,
+   // compute: Compute,
     render: Render,
     instance_buffer: wgpu::Buffer,
-    instances: Vec<Instance>,
+    animals: Animals,
+    plants: Plants,
+    //instances: Vec<Instance>,
     stats: Stats,
 }
 
@@ -80,23 +77,16 @@ impl Main {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let instances = (0..200000).map(|i| {
-            let x = i as f32 % 1000.;
-            let y = (i as f32/1000.).trunc();
-            Instance {
-                position: [(x*0.01)-9., (y*0.01)-0.99],
-                color: [x*0.001, 1.0 - y*0.01, y*0.01],
-                pad: [0,0,0],
-            }
-        }).collect::<Vec<Instance>>();
+        let animals = Animals::genesis();
+        let plants = Plants::genesis();
 
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
             label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(instances.as_slice()),
+            contents: bytemuck::cast_slice(animals.bodies().as_slice()),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });
 
-        let compute = Compute::new(&device,&instance_buffer,&shader);
+    //    let compute = Compute::new(&device,&instance_buffer,&shader);
 
         let render = Render::new(&device, &shader, surface,window, &adapter);
 
@@ -106,8 +96,9 @@ impl Main {
             device,
             queue,
             instance_buffer,
-            instances,
-            compute,
+            animals,
+            plants,
+           // compute,
             render,
             stats,
         }
@@ -122,13 +113,13 @@ impl Main {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor{
             label: Some("Encoder"),
         });
-        self.compute.compute_pass(&mut encoder);
+       // self.compute.compute_pass(&mut encoder);
         self.render.update(&mut self.queue);
         self.queue.submit(iter::once(encoder.finish()));
     }
 
     fn render(&mut self)-> Result<(), wgpu::SurfaceError>{
-        self.render.render(&self.device, &self.queue, &self.stats, &self.instances, &self.instance_buffer)
+        self.render.render(&self.device, &self.queue, &self.stats, self.animals.count() as u32, &self.instance_buffer)
     }
 }
 
