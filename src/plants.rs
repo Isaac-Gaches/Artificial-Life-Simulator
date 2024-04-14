@@ -1,50 +1,47 @@
-use crate::animal::{Animal, AnimalBody};
+use std::f32::consts::PI;
+
+use crate::render::Instance;
 
 pub struct Plant{
-    body: PlantBody,
+    body_id: usize,
 }
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct PlantBody {
-    position: [f32; 2],
-    color: [f32; 3],
-    pad:[u32;3], //align to 16 bytes
+impl Plant {
+    fn new()->Self{
+        Self{
+            body_id: 0,
+        }
+    }
 }
-
 pub struct Plants{
     plants: Vec<Plant>,
+    bodies: Vec<Instance>,
 }
-impl Plant{
-    pub fn body(&self)-> PlantBody {
-        self.body.clone()
-    }
-    pub fn new_test(x: f32, y: f32)->Self{
-        Self{
-            body: PlantBody {
-                position: [(x*0.01)-9., (y*0.01)-0.97],
-                color: [1.0-x*0.001, y*0.01, y*0.01],
-                pad: [0,0,0],
-            }
-        }
-    }
-}
-impl Plants{
+impl Plants {
     pub fn genesis()->Self{
-        let plants = (0..200000).map(|i| {
-            let x = i as f32 % 1000.;
-            let y = (i as f32/1000.).trunc();
-            Plant::new_test(x,y)
-
+        let plants = (0..100).map(|_i| {
+            Plant::new()
         }).collect::<Vec<Plant>>();
 
+        let bodies = (0..100).map(|i| {
+            let x = i as f32 % 10.;
+            let y = (i as f32/10.).trunc();
+            Instance::new([(x*0.15)+0.1, (y*0.15)+0.2], [0.0, 1.0, 0.0], -PI/2.0,0.05)
+        }).collect::<Vec<Instance>>();
+
         Self{
-            plants
+            plants,
+            bodies,
         }
     }
-    pub fn bodies(&self) -> Vec<PlantBody>{
-        self.plants.iter().map(|animal| animal.body() ).collect::<Vec<PlantBody>>()
+    pub fn instances(&self) -> &Vec<Instance>{
+        &self.bodies
     }
+
     pub fn count(&self)->usize{
         self.plants.len()
+    }
+
+    pub fn update(&mut self){
+        self.bodies.iter_mut().for_each(|instance: &mut Instance| instance.rotation+=0.05)
     }
 }

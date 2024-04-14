@@ -1,13 +1,32 @@
-use std::iter;
+use std::{iter, mem};
 use std::sync::Arc;
 use egui_wgpu::ScreenDescriptor;
-use wgpu::{Adapter, BindingType, Buffer, Device, Queue, ShaderModule, Surface, TextureViewDescriptor};
+use wgpu::{BindingType, Buffer, Device, Queue, Surface, TextureViewDescriptor};
 use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
 use winit::window::Window;
-use crate::animal::Animal;
+use crate::animal::{Animals};
 use crate::gui::{EguiRenderer, gui};
+use crate::plants::Plants;
 use crate::statistics::Stats;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Instance{
+    position: [f32;2],
+    pub rotation: f32,
+    scale: f32,
+    color: [f32; 3],
+}
+impl Instance {
+    pub fn new(position: [f32;2],color: [f32; 3],rotation:f32,scale: f32)->Self{
+        Self{
+            position,
+            color,
+            rotation,
+            scale,
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -16,25 +35,53 @@ struct Vertex {
 }
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.5],
+        position: [0.5, 1.0],
     },
     Vertex {
-        position: [-0.5, -0.5],
+        position: [0.0, 0.0],
     },
     Vertex {
-        position: [0.5, -0.5],
+        position: [1.0, 0.0],
     },
 ];
 
-const TRIANGLE_INDICES: &[u16] = &[0, 1, 2];
-const NUM_INDICES: u32 = 3;
+const QUAD_VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.0],
+    },
+    Vertex {
+        position: [1.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 1.0],
+    },
+    Vertex {
+        position: [1.0, 1.0],
+    },
+];
+
+const QUAD_INDICES: &[u16] = &[0, 1, 2, 2, 1, 3];
+const NUM_INDICES: u32 = 6;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Camera {
-    position: [f32; 2],
+    position: [f32;2],
+    zoom: f32,
+    pad: u32,
 }
-pub struct Render{
+
+#[rustfmt::skip]
+pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 0.5, 0.5,
+    0.0, 0.0, 0.0, 1.0,
+);
+
+pub struct Renderer {
+    device: Device,
+    queue: Queue,
     window: Arc<Window>,
     surface: Surface<'static>,
     config: wgpu::SurfaceConfiguration,
@@ -43,18 +90,54 @@ pub struct Render{
     camera_buffer: Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera: Camera,
-    triangle_buffer: Buffer,
-    index_buffer: Buffer,
+    triangle_vertex_buffer: Buffer,
+    quad_vertex_buffer: Buffer,
+    quad_index_buffer: Buffer,
     egui: EguiRenderer,
-    render_passes: Vec<fn()>,
+    animal_buffer: Buffer,
+    animal_count: u32,
+    plant_buffer: Buffer,
+    plant_count: u32,
 }
 
-impl Render{
-    pub fn new(device: &Device,shader: &ShaderModule,surface: Surface<'static>,window: Arc<Window>,adapter: &Adapter)->Self{
+impl Renderer {
+    pub async fn new(window: Arc<Window>)->Self{
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let surface = instance.create_surface(window.clone()).unwrap();
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .unwrap();
+
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    required_features: Default::default(),
+                    required_limits: Default::default(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        });
 
         let size = window.inner_size();
 
-        let surface_caps = surface.get_capabilities(adapter);
+        let surface_caps = surface.get_capabilities(&adapter);
 
         let surface_format = surface_caps
             .formats
@@ -72,16 +155,19 @@ impl Render{
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
-        surface.configure(device, &config);
+        surface.configure(&device, &config);
 
         let camera = Camera{
-            position: [0.,0.],
+            position: [0.5,0.],
+            zoom: 0.5,
+            pad: 0,
         };
 
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
+        let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[camera]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            size: mem::size_of::<Camera>() as wgpu::BufferAddress,
+            mapped_at_creation: false,
         });
 
         let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor{
@@ -118,10 +204,10 @@ impl Render{
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
-                module: shader,
+                module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                    array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &[
                         wgpu::VertexAttribute {
@@ -132,24 +218,34 @@ impl Render{
                     ],
                 },
                     wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Animal>() as wgpu::BufferAddress,
+                        array_stride: mem::size_of::<Instance>() as wgpu::BufferAddress,
                         step_mode: wgpu::VertexStepMode::Instance,
                         attributes: &[
                             wgpu::VertexAttribute {
                                 offset: 0,
                                 shader_location: 1,
-                                format: wgpu::VertexFormat::Float32x3,
+                                format: wgpu::VertexFormat::Float32x2,
                             },
                             wgpu::VertexAttribute {
-                                offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                                offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                                 shader_location: 2,
+                                format: wgpu::VertexFormat::Float32,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                                shader_location: 3,
+                                format: wgpu::VertexFormat::Float32,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                                shader_location: 4,
                                 format: wgpu::VertexFormat::Float32x3,
                             },
                         ],
                     }],
             },
             fragment: Some(wgpu::FragmentState {
-                module: shader,
+                module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -178,28 +274,50 @@ impl Render{
             multiview: None,
         });
 
-        let triangle_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let triangle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Triangle Buffer"),
             contents: bytemuck::cast_slice(TRIANGLE_VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+
+        let quad_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Triangle Buffer"),
+            contents: bytemuck::cast_slice(QUAD_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let quad_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(TRIANGLE_INDICES),
+            contents: bytemuck::cast_slice(QUAD_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
+
         let egui = EguiRenderer::new(
-            device,
+            &device,
             config.format,
             None,
             1,
             &window,
         );
 
-        let mut render_passes=Vec::new();
+        let animal_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("Buffer to render animals"),
+            size: 6400000,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let plant_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("Buffer to render plants"),
+            size: 6400000,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         Self{
             window,
+            device,
+            queue,
             surface,
             config,
             size,
@@ -207,14 +325,18 @@ impl Render{
             camera_buffer,
             camera_bind_group,
             camera,
-            triangle_buffer,
-            index_buffer,
+            triangle_vertex_buffer,
+            quad_vertex_buffer,
+            quad_index_buffer,
             egui,
-            render_passes,
+            animal_buffer,
+            animal_count: 0,
+            plant_buffer,
+            plant_count:0,
         }
     }
 
-    pub fn render(&mut self, device: &Device, queue: &Queue, stats: &Stats, instances: u32, instance_buffer: &Buffer) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &Stats) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,
@@ -227,11 +349,7 @@ impl Render{
             array_layer_count: None,
         });
 
-        self.render_passes.iter().for_each(|pass|{
-            pass()
-        });
-
-        let mut encoder = device
+        let mut encoder = self.device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
@@ -256,12 +374,19 @@ impl Render{
             timestamp_writes: None,
         });
 
+        //animals
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.triangle_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        render_pass.set_vertex_buffer(0, self.triangle_vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.animal_buffer.slice(..));
         render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..instances);
+        render_pass.draw(0..3,0..self.animal_count);
+
+        //plants
+        render_pass.set_vertex_buffer(0, self.quad_vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_vertex_buffer(1, self.plant_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.plant_count);
+
         drop(render_pass);
 
         let screen_descriptor = ScreenDescriptor {
@@ -270,8 +395,8 @@ impl Render{
         };
 
         self.egui.draw(
-            device,
-            queue,
+            &self.device,
+            &self.queue,
             &mut encoder,
             &self.window,
             &view,
@@ -280,12 +405,13 @@ impl Render{
             stats,
         );
 
-        queue.submit(iter::once(encoder.finish()));
+        self.queue.submit(iter::once(encoder.finish()));
         output.present();
 
         Ok(())
     }
-    pub fn resize(&mut self, new_size: Option<winit::dpi::PhysicalSize<u32>>,device: &Device) {
+
+    pub fn resize(&mut self, new_size: Option<winit::dpi::PhysicalSize<u32>>) {
         let new_size= match new_size {
             Some(new_size) =>{
                 new_size
@@ -299,15 +425,23 @@ impl Render{
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
-            self.surface.configure(device, &self.config);
+            self.surface.configure(&self.device, &self.config);
         }
     }
-    pub fn update(&self,queue: &mut Queue){
-        queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
+
+    pub fn update(&mut self,animals: &Animals,plants: &Plants){
+       // self.camera.zoom+=0.01;
+        self.animal_count = animals.count() as u32;
+        self.plant_count = plants.count() as u32;
+        self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
+        self.queue.write_buffer(&self.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
+        self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()))
     }
+
     pub fn window(&self) -> &Window {
         &self.window
     }
+
     pub fn egui_handle_input(&mut self,event: &WindowEvent){
         self.egui.handle_input(&self.window, event);
     }
