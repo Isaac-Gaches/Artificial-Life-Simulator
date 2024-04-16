@@ -430,7 +430,6 @@ impl Renderer {
     }
 
     pub fn update(&mut self,animals: &Animals,plants: &Plants){
-       // self.camera.zoom+=0.01;
         self.animal_count = animals.count() as u32;
         self.plant_count = plants.count() as u32;
         self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));

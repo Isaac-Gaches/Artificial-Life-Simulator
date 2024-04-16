@@ -3,6 +3,7 @@ mod statistics;
 mod render;
 mod animal;
 mod plants;
+mod neural_network;
 
 use render::Renderer;
 
@@ -56,6 +57,7 @@ impl Main {
 
     fn update(&mut self) {
         self.plants.update();
+        self.animals.update();
         self.renderer.update(&self.animals,&self.plants);
     }
 
@@ -103,7 +105,7 @@ pub async fn run() {
                                 main.renderer.resize(None);
                             }
                             Err(wgpu::SurfaceError::OutOfMemory) => ewlt.exit(),
-                            Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
+                            Err(wgpu::SurfaceError::Timeout) => {},
                         }
 
                         frames+=1;
