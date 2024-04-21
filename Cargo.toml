@@ -16,7 +16,8 @@ pollster = "0.3.0"
 bytemuck = { version = "1.15.0", features = ["derive"] }
 cgmath = "0.18.0"
 rayon = "1.10.0"
-nohash-hasher = "0.2.0"
+rand = "0.9.0-alpha.1"
+sysinfo = "0.30.11"
 
 [profile.dev]
 opt-level = 1

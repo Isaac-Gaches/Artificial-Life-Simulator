@@ -1,6 +1,7 @@
-use egui::{Align2, Context, Visuals};
+use egui::{Align2, Color32, Context, Visuals};
 
 use egui::epaint::Shadow;
+use egui::WidgetType::Slider;
 use egui_plot::{Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
@@ -64,8 +65,8 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&Stats),
-        stats: &Stats,
+        run_ui: impl FnOnce(&Context,&mut Stats),
+        stats: &mut Stats,
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
@@ -106,34 +107,43 @@ impl EguiRenderer {
     }
 }
 
-pub fn gui(ui: &Context,stats: &Stats) {
+pub fn gui(ui: &Context,stats: &mut Stats) {
     egui::Window::new("Statistics")
         .default_open(false)
         .default_width(400.0)
         .resizable(false)
         .anchor(Align2::LEFT_TOP, [10.0, 10.0])
         .show(ui, |ui| {
-            ui.collapsing("sin",|ui|{
-                let sin: PlotPoints = (0..100).map(|i|{
-                    let x = i as f64 * 0.1;
-                    [x,x.sin()]
-                }).collect();
-                let sin = Line::new(sin).fill(0.);
+            ui.add(egui::Slider::new(&mut stats.step_time, 1..=10).text("Statistic Update Time"));
 
-                Plot::new("sin").view_aspect(2.0).show(ui, |plot_ui| {
-                    plot_ui.line(sin);
+            ui.collapsing("diagnostics",|ui|{
+                ui.label(format!("fps: {}",stats.fps));
+                ui.label(format!("total cpu usage: {:.2}%",stats.tot_cpu_usage));
+                ui.label(format!("total memory: {} mB",stats.tot_mem/8000000));
+                ui.label(format!("used memory: {} mB",stats.used_mem/8000000));
+                ui.collapsing("cpu usage breakdown",|ui|{
+                    stats.cpu_usages.iter().enumerate().for_each(|(i,usage)|{
+                        ui.label(format!("cpu {} usage: {:.1}%",i+1,usage));
+                    })
                 });
             });
 
-            ui.collapsing("fps",|ui|{
-                let fps =Line::new(PlotPoints::new(stats.fps.clone()));
-                let fps = fps.fill(0.);
+            ui.collapsing("plant population",|ui|{
+                let pop =Line::new(PlotPoints::new(stats.plant_pop.clone()));
+                let pop = pop.fill(0.).color(Color32::GREEN);
 
-                Plot::new("fps").view_aspect(2.0).show(ui, |plot_ui| {
-                    plot_ui.line(fps);
+                Plot::new("animal population").view_aspect(2.0).show(ui, |plot_ui| {
+                    plot_ui.line(pop);
                 });
             });
 
+            ui.collapsing("animal population",|ui|{
+                let pop =Line::new(PlotPoints::new(stats.animal_pop.clone()));
+                let pop = pop.fill(0.).color(Color32::RED);
 
+                Plot::new("animal population").view_aspect(2.0).show(ui, |plot_ui| {
+                    plot_ui.line(pop);
+                });
+            });
         });
 }

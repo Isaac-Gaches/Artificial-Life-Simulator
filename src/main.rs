@@ -57,12 +57,12 @@ impl Main {
 
     fn update(&mut self) {
         self.plants.update();
-        self.animals.update();
+        self.animals.update(&mut self.plants);
         self.renderer.update(&self.animals,&self.plants);
     }
 
     fn render(&mut self)-> Result<(), wgpu::SurfaceError>{
-        self.renderer.render(&self.stats)
+        self.renderer.render(&mut self.stats)
     }
 }
 
@@ -94,7 +94,10 @@ pub async fn run() {
                     }
                     WindowEvent::RedrawRequested => {
                         if timer.elapsed().unwrap().as_secs() > 0 {
-                            main.stats.update(frames as f64);
+                            main.stats.update(frames-1,main.animals.count(),main.plants.count());
+                            for _ in 0..20{
+                                main.plants.spawn();
+                            }
                             frames = 0;
                             timer = SystemTime::now();
                         }

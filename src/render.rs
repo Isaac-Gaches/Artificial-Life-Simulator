@@ -12,9 +12,9 @@ use crate::statistics::Stats;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance{
-    position: [f32;2],
+    pub position: [f32;2],
     pub rotation: f32,
-    scale: f32,
+    pub scale: f32,
     color: [f32; 3],
 }
 impl Instance {
@@ -35,13 +35,13 @@ struct Vertex {
 }
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.5, 1.0],
-    },
-    Vertex {
         position: [0.0, 0.0],
     },
     Vertex {
-        position: [1.0, 0.0],
+        position: [0.8, 0.3],
+    },
+    Vertex {
+        position: [0.0, 0.6],
     },
 ];
 
@@ -70,14 +70,6 @@ struct Camera {
     zoom: f32,
     pad: u32,
 }
-
-#[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.5,
-    0.0, 0.0, 0.0, 1.0,
-);
 
 pub struct Renderer {
     device: Device,
@@ -158,8 +150,8 @@ impl Renderer {
         surface.configure(&device, &config);
 
         let camera = Camera{
-            position: [0.5,0.],
-            zoom: 0.5,
+            position: [0.0,0.],
+            zoom: 0.125,
             pad: 0,
         };
 
@@ -336,7 +328,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, stats: &Stats) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &mut Stats) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,

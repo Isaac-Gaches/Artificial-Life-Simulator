@@ -1,47 +1,51 @@
 use std::f32::consts::PI;
+use std::ops::Index;
 use rayon::prelude::*;
 use crate::render::Instance;
+use rand::Rng;
 
-pub struct PlantEntity{
-    body_id: usize,
-}
-impl PlantEntity {
-    fn new()->Self{
-        Self{
-            body_id: 0,
-        }
-    }
+pub struct Plant{
+    pub eaten: bool,
 }
 pub struct Plants{
-    entities: Vec<PlantEntity>,
-    bodies: Vec<Instance>,
+    pub plants: Vec<Plant>,
+    pub bodies: Vec<Instance>,
 }
 impl Plants {
     pub fn genesis()->Self{
-        let entities = (0..100).map(|_i| {
-            PlantEntity::new()
-        }).collect::<Vec<PlantEntity>>();
-
-        let bodies = (0..100).map(|i| {
-            let x = i as f32 % 10.;
-            let y = (i as f32/10.).trunc();
-            Instance::new([(x*0.15)+0.1, (y*0.15)+0.2], [1.0, 0.0, 0.0], -PI/2.0,0.05)
-        }).collect::<Vec<Instance>>();
-
+        let plants = (0..500).map(|_|{
+            Plant{ eaten: false }
+        }).collect();
+        let bodies = (0..500).map(|_|{
+            Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.05)
+        }).collect();
         Self{
-            entities,
+            plants,
             bodies,
         }
+    }
+    pub fn remove(&mut self, i: usize){
+        self.bodies.remove(i);
+        self.plants.remove(i);
     }
     pub fn instances(&self) -> &Vec<Instance>{
         &self.bodies
     }
 
     pub fn count(&self)->usize{
-        self.entities.len()
+        self.bodies.len()
     }
 
     pub fn update(&mut self){
-        self.bodies.par_iter_mut().for_each(|instance: &mut Instance| instance.rotation+=0.05)
+        (0..self.count()).rev().for_each(|i|{
+            if self.plants.index(i).eaten{
+                self.remove(i);
+            }
+        });
+    }
+
+    pub fn spawn(&mut self){
+        self.bodies.push(Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.05));
+        self.plants.push(Plant{ eaten: false });
     }
 }
