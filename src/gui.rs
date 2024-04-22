@@ -139,9 +139,18 @@ pub fn gui(ui: &Context,stats: &mut Stats) {
 
             ui.collapsing("animal population",|ui|{
                 let pop =Line::new(PlotPoints::new(stats.animal_pop.clone()));
-                let pop = pop.fill(0.).color(Color32::RED);
+                let pop = pop.fill(0.).color(Color32::WHITE);
 
                 Plot::new("animal population").view_aspect(2.0).show(ui, |plot_ui| {
+                    plot_ui.line(pop);
+                });
+            });
+
+            ui.collapsing("meat count",|ui|{
+                let pop =Line::new(PlotPoints::new(stats.meat_count.clone()));
+                let pop = pop.fill(0.).color(Color32::RED);
+
+                Plot::new("meat count").view_aspect(2.0).show(ui, |plot_ui| {
                     plot_ui.line(pop);
                 });
             });

@@ -2,6 +2,7 @@ use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
 use rand::Rng;
 use rayon::prelude::*;
+use crate::meat::Meat;
 use crate::neural_network::Network;
 use crate::plants::Plants;
 use crate::render::Instance;
@@ -15,9 +16,13 @@ struct SensoryInput{
 
 }
 impl SensoryInput{
-    fn stimulus(&self,plants: &Vec<Instance>, body: &Instance) -> Vec<f32>{
+    fn stimulus(&self,plants: &Vec<Instance>, body: &Instance,meat: &Vec<Instance>,animals: &Vec<Instance>) -> Vec<f32>{
+        let mut input = Vec::new();
+
         let mut closest = f32::MAX;
         let mut angle = 0.;
+
+        //plants
         plants.iter().for_each(|plant|{
             let relative_pos_x = plant.position[0] - body.position[0];
             let relative_pos_y = plant.position[1] - body.position[1];
@@ -29,7 +34,38 @@ impl SensoryInput{
         });
         //always finds angle on rhs, this converts it into the acute angle if it's not already
         angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-        vec![closest,angle]
+        input.push(angle);
+        input.push(closest);
+
+        //meat
+        meat.iter().for_each(|plant|{
+            let relative_pos_x = plant.position[0] - body.position[0];
+            let relative_pos_y = plant.position[1] - body.position[1];
+            let dist = (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y).sqrt();
+            if dist < closest{
+                closest = dist;
+                angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+            }
+        });
+        angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
+        input.push(angle);
+        input.push(closest);
+
+        //animals
+        animals.iter().for_each(|plant|{
+            let relative_pos_x = plant.position[0] - body.position[0];
+            let relative_pos_y = plant.position[1] - body.position[1];
+            let dist = (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y).sqrt();
+            if dist < closest{
+                closest = dist;
+                angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+            }
+        });
+        angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
+        input.push(angle);
+        input.push(closest);
+
+        input
     }
 }
 pub struct Animals{
@@ -46,7 +82,7 @@ impl Animals{
         }).collect::<Vec<Instance>>();
 
         let brains = (0..500).map(|_| {
-            Network::random(&[3,6,4])
+            Network::random(&[7,14,4])
         }).collect::<Vec<Network>>();
 
         let senses = (0..500).map(|_| {
@@ -65,13 +101,13 @@ impl Animals{
         }
     }
 
-    pub fn update(&mut self, plants: &mut Plants){
+    pub fn update(&mut self, plants: &mut Plants, meat: &mut Meat){
         let mut reproducing = Vec::new();
         self.brains.iter().zip(self.senses.iter()).zip(self.animals.iter()).enumerate().for_each(|(i,((network,senses),animal))|{
-            let mut input = senses.stimulus(&plants.bodies,self.bodies.index(i));
+            let mut input = senses.stimulus(&plants.bodies,self.bodies.index(i),&self.bodies,&meat.bodies);
             input.push(animal.energy/100.);
             let response = network.propagate(input);
-            if *response.index(3) > 0. && animal.energy > 180.{
+            if *response.index(3) > 0. && animal.energy > 200.{
                 reproducing.push(i);
             }
             let mut body = self.bodies.index_mut(i);
@@ -114,6 +150,7 @@ impl Animals{
 
         (0..self.count()).rev().for_each(|i|{
             if self.animals.index(i).energy <= 0.{
+                meat.spawn(self.bodies.index(i).position);
                 self.remove(i);
             }
         });
@@ -124,7 +161,15 @@ impl Animals{
                 let relative_pos_y = plant.0.position[1] - animal.0.position[1];
                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.003{
                     plant.1.eaten = true;
-                    animal.1.energy += 40.;
+                    animal.1.energy += 30.;
+                }
+            });
+            meat.bodies.iter().zip(meat.meat.iter_mut()).enumerate().for_each(|(i,meat)|{
+                let relative_pos_x = meat.0.position[0] - animal.0.position[0];
+                let relative_pos_y = meat.0.position[1] - animal.0.position[1];
+                if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.003{
+                    meat.1.eaten = true;
+                    animal.1.energy += 60.;
                 }
             });
         });

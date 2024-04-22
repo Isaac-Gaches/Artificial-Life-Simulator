@@ -7,6 +7,7 @@ use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::animal::{Animals};
 use crate::gui::{EguiRenderer, gui};
+use crate::meat::Meat;
 use crate::plants::Plants;
 use crate::statistics::Stats;
 #[repr(C)]
@@ -90,6 +91,8 @@ pub struct Renderer {
     animal_count: u32,
     plant_buffer: Buffer,
     plant_count: u32,
+    meat_buffer: Buffer,
+    meat_count: u32,
 }
 
 impl Renderer {
@@ -306,6 +309,13 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        let meat_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("Buffer to render plants"),
+            size: 6400000,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self{
             window,
             device,
@@ -325,6 +335,8 @@ impl Renderer {
             animal_count: 0,
             plant_buffer,
             plant_count:0,
+            meat_buffer,
+            meat_count: 0,
         }
     }
 
@@ -379,6 +391,10 @@ impl Renderer {
         render_pass.set_vertex_buffer(1, self.plant_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.plant_count);
 
+        //meat
+        render_pass.set_vertex_buffer(1, self.meat_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.meat_count);
+
         drop(render_pass);
 
         let screen_descriptor = ScreenDescriptor {
@@ -421,12 +437,14 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants, meat: &Meat){
         self.animal_count = animals.count() as u32;
         self.plant_count = plants.count() as u32;
+        self.meat_count = meat.count() as u32;
         self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
         self.queue.write_buffer(&self.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
-        self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()))
+        self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
+        self.queue.write_buffer(&self.meat_buffer,0,bytemuck::cast_slice(meat.instances().as_slice()));
     }
 
     pub fn window(&self) -> &Window {
