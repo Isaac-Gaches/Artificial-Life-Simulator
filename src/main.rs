@@ -4,7 +4,7 @@ mod render;
 mod animal;
 mod plants;
 mod neural_network;
-mod meat;
+mod eggs;
 
 use render::Renderer;
 
@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use animal::*;
 use statistics::Stats;
-use crate::meat::Meat;
+use crate::eggs::Eggs;
 use crate::plants::Plants;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
 struct Main {
     renderer: Renderer,
     animals: Animals,
-    meat: Meat,
+    eggs: Eggs,
     plants: Plants,
     stats: Stats,
 }
@@ -41,14 +41,14 @@ impl Main {
         let animals = Animals::genesis();
         let plants = Plants::genesis();
         let stats = Stats::default();
-        let meat = Meat::genesis();
+        let eggs = Eggs::default();
 
         Self {
             renderer,
             animals,
+            eggs,
             plants,
             stats,
-            meat,
         }
     }
 
@@ -59,9 +59,9 @@ impl Main {
 
     fn update(&mut self) {
         self.plants.update();
-        self.meat.update();
-        self.animals.update(&mut self.plants,&mut self.meat);
-        self.renderer.update(&self.animals,&self.plants,&self.meat);
+        self.eggs.update();
+        self.animals.update(&mut self.plants,&mut self.eggs);
+        self.renderer.update(&self.animals,&self.plants,&self.eggs);
     }
 
     fn render(&mut self)-> Result<(), wgpu::SurfaceError>{
@@ -97,8 +97,8 @@ pub async fn run() {
                     }
                     WindowEvent::RedrawRequested => {
                         if timer.elapsed().unwrap().as_secs() > 0 {
-                            main.stats.update(frames-1,main.animals.count(),main.plants.count(),main.meat.count());
-                            for _ in 0..12{
+                            main.stats.update(frames-1,main.animals.count(),main.plants.count());
+                            for _ in 0..15{
                                 main.plants.spawn();
                             }
                             frames = 0;

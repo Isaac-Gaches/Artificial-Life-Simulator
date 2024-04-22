@@ -146,13 +146,13 @@ pub fn gui(ui: &Context,stats: &mut Stats) {
                 });
             });
 
-            ui.collapsing("meat count",|ui|{
+/*            ui.collapsing("meat count",|ui|{
                 let pop =Line::new(PlotPoints::new(stats.meat_count.clone()));
                 let pop = pop.fill(0.).color(Color32::RED);
 
                 Plot::new("meat count").view_aspect(2.0).show(ui, |plot_ui| {
                     plot_ui.line(pop);
                 });
-            });
+            });*/
         });
 }

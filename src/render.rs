@@ -6,8 +6,8 @@ use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::animal::{Animals};
+use crate::eggs::Eggs;
 use crate::gui::{EguiRenderer, gui};
-use crate::meat::Meat;
 use crate::plants::Plants;
 use crate::statistics::Stats;
 #[repr(C)]
@@ -91,8 +91,8 @@ pub struct Renderer {
     animal_count: u32,
     plant_buffer: Buffer,
     plant_count: u32,
-    meat_buffer: Buffer,
-    meat_count: u32,
+    egg_buffer: Buffer,
+    egg_count: u32,
 }
 
 impl Renderer {
@@ -309,7 +309,7 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
-        let meat_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+        let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
             size: 6400000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -335,8 +335,8 @@ impl Renderer {
             animal_count: 0,
             plant_buffer,
             plant_count:0,
-            meat_buffer,
-            meat_count: 0,
+            egg_buffer,
+            egg_count: 0,
         }
     }
 
@@ -365,9 +365,9 @@ impl Renderer {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.1,
-                        b: 0.1,
+                        r: 0.05,
+                        g: 0.05,
+                        b: 0.05,
                         a: 1.0,
                     }),
                     store: wgpu::StoreOp::Store,
@@ -391,9 +391,9 @@ impl Renderer {
         render_pass.set_vertex_buffer(1, self.plant_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.plant_count);
 
-        //meat
-        render_pass.set_vertex_buffer(1, self.meat_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.meat_count);
+        //eggs
+        render_pass.set_vertex_buffer(1, self.egg_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.egg_count);
 
         drop(render_pass);
 
@@ -437,14 +437,14 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants, meat: &Meat){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs){
         self.animal_count = animals.count() as u32;
         self.plant_count = plants.count() as u32;
-        self.meat_count = meat.count() as u32;
+        self.egg_count = eggs.count() as u32;
         self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
         self.queue.write_buffer(&self.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
         self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
-        self.queue.write_buffer(&self.meat_buffer,0,bytemuck::cast_slice(meat.instances().as_slice()));
+        self.queue.write_buffer(&self.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
     }
 
     pub fn window(&self) -> &Window {
