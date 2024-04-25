@@ -76,6 +76,8 @@ pub async fn run() {
     let mut timer = SystemTime::now();
     let mut frames = 0;
 
+    let num = 1;
+
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
             ref event,
@@ -96,7 +98,7 @@ pub async fn run() {
                         main.renderer.resize(Some(*physical_size));
                     }
                     WindowEvent::RedrawRequested => {
-                        if timer.elapsed().unwrap().as_secs() > 0 {
+                        if timer.elapsed().unwrap().as_millis() >= 1000/num {
                             main.stats.update(frames-1,main.animals.count(),main.plants.count());
                             for _ in 0..20{
                                 main.plants.spawn();
@@ -104,7 +106,9 @@ pub async fn run() {
                             frames = 0;
                             timer = SystemTime::now();
                         }
-                        main.update();
+                        for i in 0..num{
+                            main.update();
+                        }
                         match main.render() {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {

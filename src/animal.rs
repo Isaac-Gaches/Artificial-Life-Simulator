@@ -1,5 +1,6 @@
 use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
+use cgmath::num_traits::clamp;
 use rand::Rng;
 use rayon::prelude::*;
 use crate::eggs::Eggs;
@@ -12,6 +13,7 @@ pub struct Animal{
     energy: f32,
     aggression: f32,
     carnivore_factor: f32,
+    speed: f32,
 }
 #[derive(Clone)]
 pub struct SensoryInput{
@@ -70,20 +72,20 @@ pub struct Animals{
 impl Animals{
     pub fn genesis()->Self{
         let mut rng = rand::thread_rng();
-        let bodies = (0..300).map(|i| {
+        let bodies = (0..400).map(|i| {
             Instance::new([rng.gen_range((-8.)..8.), rng.gen_range((-8.)..8.)], [1.0, 1.0, 1.0], rng.gen_range(-PI..PI),rng.gen_range(0.05..0.2))
         }).collect::<Vec<Instance>>();
 
-        let brains = (0..300).map(|_| {
+        let brains = (0..400).map(|_| {
             Network::random(&[6,12,5])
         }).collect::<Vec<Network>>();
 
-        let senses = (0..300).map(|_| {
+        let senses = (0..400).map(|_| {
             SensoryInput{ }
         }).collect::<Vec<SensoryInput>>();
 
-        let animals = (0..300).map(|_| {
-            Animal{energy: 100., aggression: 0.0, carnivore_factor: rng.gen_range(0.0..1.0) }
+        let animals = (0..400).map(|_| {
+            Animal{energy: 100., aggression: 0.0, carnivore_factor: rng.gen_range(0.0..1.0), speed: rng.gen_range(1.0..4.0) }
         }).collect::<Vec<Animal>>();
 
         Self{
@@ -104,25 +106,27 @@ impl Animals{
                 reproducing.push(i);
             }
             let mut body = self.bodies.index_mut(i);
-            body.position[0] += response.index(0).min(1.0) * 0.005 * body.rotation.cos();
-            body.position[1] += response.index(0).min(1.0) * 0.005 * body.rotation.sin();
-            body.rotation += (response.index(1) - response.index(2)).min(1.0) * 0.05;
-            animal.energy -= body.scale * 0.4;
+            body.position[0] += response.index(0).min(1.0) * 0.002 * body.rotation.cos() * animal.speed;
+            body.position[1] += response.index(0).min(1.0) * 0.002 * body.rotation.sin() * animal.speed;
+            body.rotation += (response.index(1) - response.index(2)).clamp(-1.0,1.0) * 0.005 * animal.speed;
+            animal.energy -= body.scale * 0.4 + response.index(0).min(1.0) * animal.speed * 0.01 + (response.index(1) - response.index(2)).clamp(-1.0,1.0).abs() * 0.005;
             animal.aggression = response.index(4).clamp(0.,1.);
         });
 
         reproducing.iter().for_each(|i|{
             let mut animal = self.animals.index_mut(*i);
             animal.energy -= 90.;
-
+            let mut rng = rand::thread_rng();
             let mut new_amimal = animal.clone();
+            new_amimal.speed = (new_amimal.speed + rng.gen_range(-0.2..0.2)).clamp(1.,4.);
+            new_amimal.carnivore_factor = (new_amimal.carnivore_factor + rng.gen_range(-0.1..0.1)).clamp(0.,1.);
             new_amimal.energy = 80.;
             let mut new_brain = self.brains.index(*i).clone();
             new_brain.mutate();
             let new_senses = self.senses.index(*i).clone();
             let mut new_body = self.bodies.index(*i).clone();
-            new_body.scale = (new_body.scale + rand::thread_rng().gen_range(-0.015..0.015)).clamp(0.05,0.2);
-            new_body.color = [new_amimal.carnivore_factor,1.-new_amimal.carnivore_factor,new_body.scale*5.];
+            new_body.scale = (new_body.scale + rng.gen_range(-0.015..0.015)).clamp(0.05,0.2);
+            new_body.color = [new_amimal.carnivore_factor,1.-new_amimal.carnivore_factor,(new_amimal.speed -1.0)/3.];
 
             eggs.spawn(self.bodies.index(*i).position,new_body,new_senses,new_amimal,new_brain);
         });
@@ -162,7 +166,7 @@ impl Animals{
                 let relative_pos_y = plant.0.position[1] - animal.0.position[1];
                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.003 && !plant.1.eaten{
                     plant.1.eaten = true;
-                    animal.1.energy += 50. * (1.0-animal.1.carnivore_factor);
+                    animal.1.energy += 50. * (1.-animal.1.carnivore_factor);
                 }
             });
         });
