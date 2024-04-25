@@ -13,10 +13,10 @@ pub struct Plants{
 }
 impl Plants {
     pub fn genesis()->Self{
-        let plants = (0..200).map(|_|{
+        let plants = (0..100).map(|_|{
             Plant{ eaten: false }
         }).collect();
-        let bodies = (0..200).map(|_|{
+        let bodies = (0..100).map(|_|{
             Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.04)
         }).collect();
         Self{

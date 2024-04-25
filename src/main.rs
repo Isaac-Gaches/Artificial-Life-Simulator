@@ -59,7 +59,7 @@ impl Main {
 
     fn update(&mut self) {
         self.plants.update();
-        self.eggs.update();
+        self.eggs.update(&mut self.animals);
         self.animals.update(&mut self.plants,&mut self.eggs);
         self.renderer.update(&self.animals,&self.plants,&self.eggs);
     }
@@ -98,7 +98,7 @@ pub async fn run() {
                     WindowEvent::RedrawRequested => {
                         if timer.elapsed().unwrap().as_secs() > 0 {
                             main.stats.update(frames-1,main.animals.count(),main.plants.count());
-                            for _ in 0..15{
+                            for _ in 0..20{
                                 main.plants.spawn();
                             }
                             frames = 0;

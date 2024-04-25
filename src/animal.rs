@@ -8,16 +8,17 @@ use crate::plants::Plants;
 use crate::render::Instance;
 
 #[derive(Clone)]
-struct Animal{
+pub struct Animal{
     energy: f32,
     aggression: f32,
+    carnivore_factor: f32,
 }
 #[derive(Clone)]
-struct SensoryInput{
+pub struct SensoryInput{
 
 }
 impl SensoryInput{
-    fn stimulus(&self,plants: &Vec<Instance>, body: &Instance,/*meat: &Vec<Instance>,*/animals: &Vec<Instance>) -> Vec<f32>{
+    fn stimulus(&self,plants: &Vec<Instance>, body: &Instance,animals: &Vec<Instance>) -> Vec<f32>{
         let mut input = Vec::new();
 
         let mut closest = f32::MAX;
@@ -36,21 +37,25 @@ impl SensoryInput{
         //always finds angle on rhs, this converts it into the acute angle if it's not already
         angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
         input.push(angle);
-        input.push(closest);
+        input.push((1.0-closest).max(0.));
+
+        let mut bigger:f32 = -1.;
 
         //animals
-        animals.iter().for_each(|plant|{
-            let relative_pos_x = plant.position[0] - body.position[0];
-            let relative_pos_y = plant.position[1] - body.position[1];
+        animals.iter().for_each(|animal|{
+            let relative_pos_x = animal.position[0] - body.position[0];
+            let relative_pos_y = animal.position[1] - body.position[1];
             let dist = (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y).sqrt();
-            if dist < closest{
+            if dist < closest && dist > 0.{
                 closest = dist;
                 angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+                bigger = if animal.scale >= body.scale { -1. } else {1.0}
             }
         });
         angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
         input.push(angle);
-        input.push(closest);
+        input.push((1.0-closest).max(0.));
+        input.push(bigger);
 
         input
     }
@@ -64,20 +69,21 @@ pub struct Animals{
 
 impl Animals{
     pub fn genesis()->Self{
-        let bodies = (0..500).map(|i| {
-            Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [1.0, 1.0, 1.0], rand::thread_rng().gen_range(-PI..PI),0.1)
+        let mut rng = rand::thread_rng();
+        let bodies = (0..300).map(|i| {
+            Instance::new([rng.gen_range((-8.)..8.), rng.gen_range((-8.)..8.)], [1.0, 1.0, 1.0], rng.gen_range(-PI..PI),rng.gen_range(0.05..0.2))
         }).collect::<Vec<Instance>>();
 
-        let brains = (0..500).map(|_| {
-            Network::random(&[5,10,5])
+        let brains = (0..300).map(|_| {
+            Network::random(&[6,12,5])
         }).collect::<Vec<Network>>();
 
-        let senses = (0..500).map(|_| {
+        let senses = (0..300).map(|_| {
             SensoryInput{ }
         }).collect::<Vec<SensoryInput>>();
 
-        let animals = (0..500).map(|_| {
-            Animal{energy: 100., aggression: 0.0 }
+        let animals = (0..300).map(|_| {
+            Animal{energy: 100., aggression: 0.0, carnivore_factor: rng.gen_range(0.0..1.0) }
         }).collect::<Vec<Animal>>();
 
         Self{
@@ -101,14 +107,24 @@ impl Animals{
             body.position[0] += response.index(0).min(1.0) * 0.005 * body.rotation.cos();
             body.position[1] += response.index(0).min(1.0) * 0.005 * body.rotation.sin();
             body.rotation += (response.index(1) - response.index(2)).min(1.0) * 0.05;
-            animal.energy -= 0.05;
+            animal.energy -= body.scale * 0.4;
             animal.aggression = response.index(4).clamp(0.,1.);
         });
 
         reproducing.iter().for_each(|i|{
-            self.asexual_offspring(*i);
-            self.asexual_offspring(*i);
-            eggs.spawn(self.bodies.index(*i).position);
+            let mut animal = self.animals.index_mut(*i);
+            animal.energy -= 90.;
+
+            let mut new_amimal = animal.clone();
+            new_amimal.energy = 80.;
+            let mut new_brain = self.brains.index(*i).clone();
+            new_brain.mutate();
+            let new_senses = self.senses.index(*i).clone();
+            let mut new_body = self.bodies.index(*i).clone();
+            new_body.scale = (new_body.scale + rand::thread_rng().gen_range(-0.015..0.015)).clamp(0.05,0.2);
+            new_body.color = [new_amimal.carnivore_factor,1.-new_amimal.carnivore_factor,new_body.scale*5.];
+
+            eggs.spawn(self.bodies.index(*i).position,new_body,new_senses,new_amimal,new_brain);
         });
 
         self.bodies.par_iter_mut().for_each(|body|{
@@ -146,7 +162,7 @@ impl Animals{
                 let relative_pos_y = plant.0.position[1] - animal.0.position[1];
                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.003 && !plant.1.eaten{
                     plant.1.eaten = true;
-                    animal.1.energy += 35.;
+                    animal.1.energy += 50. * (1.0-animal.1.carnivore_factor);
                 }
             });
         });
@@ -160,17 +176,17 @@ impl Animals{
                 let distance = (collision_axis_x*collision_axis_x + collision_axis_y*collision_axis_y).sqrt();
 
                 if distance < 0.05{
-                    if self.animals.index(i).aggression > self.animals.index(j).aggression && self.animals.index(i).energy > 0.{
-                        //self.bodies.index_mut(j).position[0] += (collision_axis_x/distance)*0.02;
-                        //self.bodies.index_mut(j).position[1] += (collision_axis_x/distance)*0.02;
+                    let attack_i = self.animals.index(i).aggression * self.bodies.index(i).scale;
+                    let attack_j = self.animals.index(j).aggression * self.bodies.index(j).scale;
+                    if attack_i > attack_j && self.animals.index(i).energy > 0.{
+                        self.animals.index_mut(i).energy += self.animals.index(j).energy * self.animals.index(i).carnivore_factor;
                         self.animals.index_mut(j).energy = 0.;
-                        self.animals.index_mut(i).energy += 100.;
                     }
-                    else if self.animals.index(j).energy > 0.{
+                    else if attack_j > attack_i && self.animals.index(j).energy > 0.{
                       //  self.bodies.index_mut(i).position[0] -= (collision_axis_x/distance)*0.02;
                        // self.bodies.index_mut(i).position[1] -= (collision_axis_y/distance)*0.02;
+                        self.animals.index_mut(j).energy += self.animals.index(i).energy * self.animals.index(j).carnivore_factor;
                         self.animals.index_mut(i).energy = 0.;
-                        self.animals.index_mut(j).energy += 100.;
                     }
                 }
             }
@@ -192,19 +208,10 @@ impl Animals{
         self.bodies.len()
     }
 
-    fn asexual_offspring(&mut self,i: usize){
-        let mut animal = self.animals.index_mut(i);
-        animal.energy -= 90.;
-
-        let mut new_amimal = animal.clone();
-        new_amimal.energy = 80.;
-        self.animals.push(new_amimal);
-        let mut new_brain = self.brains.index(i).clone();
-        new_brain.mutate();
-        self.brains.push(new_brain);
-        let mut new_senses = self.senses.index(i).clone();
-        self.senses.push(new_senses);
-        let mut new_body = self.bodies.index(i).clone();
-        self.bodies.push(new_body);
+    pub fn spawn(&mut self,body: Instance,sense: SensoryInput,animal: Animal,brain:Network){
+        self.animals.push(animal);
+        self.senses.push(sense);
+        self.brains.push(brain);
+        self.bodies.push(body);
     }
 }

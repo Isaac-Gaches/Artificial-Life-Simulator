@@ -16,7 +16,7 @@ pub struct Instance{
     pub position: [f32;2],
     pub rotation: f32,
     pub scale: f32,
-    color: [f32; 3],
+    pub color: [f32; 3],
 }
 impl Instance {
     pub fn new(position: [f32;2],color: [f32; 3],rotation:f32,scale: f32)->Self{
