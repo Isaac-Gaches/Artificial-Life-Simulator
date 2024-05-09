@@ -1,9 +1,8 @@
 use std::ops::{Index, IndexMut};
-use rayon::prelude::*;
 use crate::render::Instance;
-use rand::Rng;
 use crate::animal::{Animal, Animals, SensoryInput};
 use crate::neural_network::Network;
+use crate::species::SpeciesList;
 
 pub struct Egg{
     pub time: f32,
@@ -30,12 +29,12 @@ impl Eggs {
         self.bodies.len()
     }
 
-    pub fn update(&mut self,animals: &mut Animals){
+    pub fn update(&mut self,animals: &mut Animals,species_list: &mut SpeciesList){
         (0..self.count()).rev().for_each(|i|{
             self.eggs.index_mut(i).time += 1./60.;
             if self.eggs.index(i).time > 10.{
                 let egg = self.eggs.index(i);
-                animals.spawn(egg.body.clone(), egg.sense.clone(), egg.animal.clone(), egg.brain.clone());
+                animals.spawn(egg.body, egg.sense.clone(), egg.animal.clone(), egg.brain.clone(),species_list);
                 self.remove(i);
             }
         });

@@ -9,6 +9,7 @@ use crate::animal::{Animals};
 use crate::eggs::Eggs;
 use crate::gui::{EguiRenderer, gui};
 use crate::plants::Plants;
+use crate::simulation_parameters::SimParams;
 use crate::statistics::Stats;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -154,7 +155,7 @@ impl Renderer {
 
         let camera = Camera{
             position: [0.0,0.],
-            zoom: 0.125,
+            zoom: 0.067,
             pad: 0,
         };
 
@@ -340,7 +341,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, stats: &mut Stats) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,
@@ -411,6 +412,7 @@ impl Renderer {
             screen_descriptor,
             gui,
             stats,
+            sim_params,
         );
 
         self.queue.submit(iter::once(encoder.finish()));

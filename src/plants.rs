@@ -1,8 +1,8 @@
 use std::f32::consts::PI;
 use std::ops::Index;
-use rayon::prelude::*;
 use crate::render::Instance;
 use rand::Rng;
+use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 
 pub struct Plant{
     pub eaten: bool,
@@ -13,15 +13,15 @@ pub struct Plants{
 }
 impl Plants {
     pub fn genesis()->Self{
-        let plants = (0..100).map(|_|{
+/*        let plants = (0..200).map(|_|{
             Plant{ eaten: false }
         }).collect();
-        let bodies = (0..100).map(|_|{
+        let bodies = (0..200).map(|_|{
             Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.04)
-        }).collect();
+        }).collect();*/
         Self{
-            plants,
-            bodies,
+            plants: vec![],
+            bodies: vec![],
         }
     }
     pub fn remove(&mut self, i: usize){
@@ -36,7 +36,7 @@ impl Plants {
         self.bodies.len()
     }
 
-    pub fn update(&mut self){
+    pub fn kill(&mut self){
         (0..self.count()).rev().for_each(|i|{
             if self.plants.index(i).eaten{
                 self.remove(i);
@@ -45,7 +45,7 @@ impl Plants {
     }
 
     pub fn spawn(&mut self){
-        self.bodies.push(Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.04));
+        self.bodies.push(Instance::new([rand::thread_rng().gen_range((-WORLD_WIDTH)..WORLD_WIDTH), rand::thread_rng().gen_range((-WORLD_HEIGHT)..WORLD_HEIGHT)], [0.0, 1.0, 0.0], PI/4.0,0.04));
         self.plants.push(Plant{ eaten: false });
     }
 }
