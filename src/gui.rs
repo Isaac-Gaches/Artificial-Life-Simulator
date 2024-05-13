@@ -142,7 +142,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             });
             ui.horizontal(|ui|{
                 ui.label("Steps Per Frame");
-                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=8));
+                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=6));
             });
             ui.separator();
             ui.horizontal(|ui|{

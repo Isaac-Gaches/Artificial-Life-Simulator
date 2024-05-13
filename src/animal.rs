@@ -16,6 +16,7 @@ pub struct Animal{
     pub aggression: f32,
     pub carnivore_factor: f32,
     speed: f32,
+    offspring_investment: f32,
     pub species_id: usize,
 }
 #[derive(Clone)]
@@ -90,7 +91,7 @@ impl Animals{
         self.senses.push(SensoryInput{ });
         self.brains.push(Network::random(&[7,14,5]));
         self.bodies.push(Instance::new([rng.gen_range((-WORLD_WIDTH)..WORLD_WIDTH), rng.gen_range((-WORLD_HEIGHT)..WORLD_HEIGHT)], [1.,1.,1.], rng.gen_range(-PI..PI),rng.gen_range(0.05..0.2)));
-        self.animals.push(Animal{energy: 100., aggression: 0.0, carnivore_factor: rng.gen_range(0.0..=1.0), speed: rng.gen_range(1.0..3.0), species_id: 0 });
+        self.animals.push(Animal{energy: 100., aggression: 0.0, carnivore_factor: rng.gen_range(0.0..=1.0), speed: rng.gen_range(1.0..3.0), offspring_investment: rng.gen_range(40.0..160.0), species_id: 0 });
     }
     pub fn kill(&mut self){
         (0..self.count()).rev().for_each(|i|{
@@ -107,25 +108,26 @@ impl Animals{
             let animal = self.animals.index_mut(i);
             input.push(animal.energy/100.);
             let response = network.propagate(input);
-            if *response.index(3) > 0. && animal.energy > 200.{
+            if *response.index(3) > 0. && animal.energy > animal.offspring_investment * 1.2{
                 reproducing.push(i);
             }
             let body = self.bodies.index_mut(i);
-            body.position[0] += response.index(0).min(1.0) * 0.002 * body.rotation.cos() * animal.speed;
-            body.position[1] += response.index(0).min(1.0) * 0.002 * body.rotation.sin() * animal.speed;
-            body.rotation += (response.index(1) - response.index(2)).clamp(-1.0,1.0) * 0.03 * animal.speed;
-            animal.energy -= body.scale * 0.5 + response.index(0).min(1.0) * animal.speed * 0.02;
+            body.position[0] += response.index(0).min(1.0) * 0.004 * body.rotation.cos() * animal.speed;
+            body.position[1] += response.index(0).min(1.0) * 0.004 * body.rotation.sin() * animal.speed;
+            body.rotation += (response.index(1) - response.index(2)).clamp(-1.0,1.0) * 0.04 * animal.speed;
+            animal.energy -= body.scale * 0.5 + response.index(0).min(1.0) * animal.speed * animal.speed * 0.02;
             animal.aggression = response.index(4).clamp(0.,1.);
         });
 
         reproducing.iter().for_each(|i|{
             let animal = self.animals.index_mut(*i);
-            animal.energy -= 90.;
+            animal.energy -= animal.offspring_investment * 1.2;
             let mut rng = rand::thread_rng();
             let mut new_animal = animal.clone();
             new_animal.speed = (new_animal.speed + rng.gen_range(-0.2..0.2)).clamp(1., 3.);
+            new_animal.offspring_investment = (new_animal.offspring_investment + rng.gen_range(-4.0..4.0)).clamp(40., 160.);
             new_animal.carnivore_factor = (new_animal.carnivore_factor + rng.gen_range(-0.1..0.1)).clamp(0., 1.);
-            new_animal.energy = 80.;
+            new_animal.energy = animal.offspring_investment;
             let mut new_brain = self.brains.index(*i).clone();
             new_brain.mutate();
             let new_senses = self.senses.index(*i).clone();
@@ -134,8 +136,6 @@ impl Animals{
             new_body.scale = (new_body.scale + rng.gen_range(-0.015..0.015)).clamp(0.05,0.2);
             eggs.spawn(self.bodies.index(*i).position, new_body, new_senses, new_animal, new_brain);
         });
-
-
 
         (&mut self.bodies,&self.animals).into_par_iter().for_each(|(body,animal)|{
             if body.position[0] > WORLD_WIDTH{

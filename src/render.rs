@@ -8,6 +8,7 @@ use winit::window::Window;
 use crate::animal::{Animals};
 use crate::eggs::Eggs;
 use crate::gui::{EguiRenderer, gui};
+use crate::input_manager::Inputs;
 use crate::plants::Plants;
 use crate::simulation_parameters::SimParams;
 use crate::statistics::Stats;
@@ -155,7 +156,7 @@ impl Renderer {
 
         let camera = Camera{
             position: [0.0,0.],
-            zoom: 0.067,
+            zoom: 0.05,
             pad: 0,
         };
 
@@ -439,10 +440,15 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs){
         self.animal_count = animals.count() as u32;
         self.plant_count = plants.count() as u32;
         self.egg_count = eggs.count() as u32;
+
+        self.camera.position[1] += if inputs.up {0.1} else if inputs.down {-0.1} else {0.0};
+        self.camera.position[0] += if inputs.right {0.1} else if inputs.left {-0.1} else {0.0};
+        self.camera.zoom += if inputs.plus {0.002} else if inputs.minus {-0.002} else {0.0};
+
         self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
         self.queue.write_buffer(&self.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
         self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));

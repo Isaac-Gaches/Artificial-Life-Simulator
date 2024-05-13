@@ -10,7 +10,7 @@ pub struct Stats{
     pub tot_mem: u64,
     pub cpu_usages: Vec<f32>,
     pub tot_cpu_usage: f32,
-   // step: usize,
+    step: usize,
     pub step_time: usize,
     pub diet_dist: Vec<f64>,
 }
@@ -25,15 +25,15 @@ impl Default for Stats{
             tot_mem: 0,
             cpu_usages: vec![],
             tot_cpu_usage: 0.0,
-           // step: 0,
+            step: 0,
             step_time: 2,
             diet_dist: vec![0.;11],
         }
     }
 }
 impl Stats{
-    pub fn update(&mut self,frames: usize,animal_population: usize, plant_population: usize,animals: &[Animal],step: usize){
-        if step % self.step_time == 0 {
+    pub fn update(&mut self,frames: usize,animal_population: usize, plant_population: usize,animals: &[Animal]){
+        if self.step % self.step_time == 0 {
             self.system.refresh_memory();
             self.system.refresh_cpu_usage();
             self.cpu_usages = self.system.cpus().iter().map(|cpu| cpu.cpu_usage()).collect::<Vec<f32>>();
@@ -41,13 +41,14 @@ impl Stats{
             self.tot_mem = self.system.total_memory();
             self.used_mem = self.system.used_memory();
             self.fps = frames;
-            self.animal_pop.push([step as f64, animal_population as f64]);
-            self.plant_pop.push([step as f64, plant_population as f64]);
+            self.animal_pop.push([self.step as f64, animal_population as f64]);
+            self.plant_pop.push([self.step as f64, plant_population as f64]);
             self.diet_dist = vec![0.;11];
             animals.iter().for_each(|animal|{
                 let diet = (animal.carnivore_factor * 10.).round() as usize;
                 self.diet_dist[diet] += 1.;
             });
         }
+        self.step+=1
     }
 }
