@@ -1,5 +1,5 @@
 use std::f32::consts::PI;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use crate::render::Instance;
 use rand::Rng;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
@@ -13,12 +13,6 @@ pub struct Plants{
 }
 impl Plants {
     pub fn genesis()->Self{
-/*        let plants = (0..200).map(|_|{
-            Plant{ eaten: false }
-        }).collect();
-        let bodies = (0..200).map(|_|{
-            Instance::new([rand::thread_rng().gen_range((-8.)..8.), rand::thread_rng().gen_range((-8.)..8.)], [0.0, 1.0, 0.0], PI/4.0,0.04)
-        }).collect();*/
         Self{
             plants: vec![],
             bodies: vec![],
@@ -30,6 +24,11 @@ impl Plants {
     }
     pub fn instances(&self) -> &Vec<Instance>{
         &self.bodies
+    }
+
+    pub fn handle_collision(&mut self,plant_id:usize)->(f32,f32){
+        self.plants.index_mut(plant_id).eaten = true;
+        (70.,1.0)
     }
 
     pub fn count(&self)->usize{
@@ -45,7 +44,7 @@ impl Plants {
     }
 
     pub fn spawn(&mut self){
-        self.bodies.push(Instance::new([rand::thread_rng().gen_range((-WORLD_WIDTH)..WORLD_WIDTH), rand::thread_rng().gen_range((-WORLD_HEIGHT)..WORLD_HEIGHT)], [0.0, 1.0, 0.0], PI/4.0,0.04));
+        self.bodies.push(Instance::new([rand::thread_rng().gen_range(0.0..WORLD_WIDTH), rand::thread_rng().gen_range(0.0..WORLD_HEIGHT)], [0.0, 1.0, 0.0], PI/4.0,0.04));
         self.plants.push(Plant{ eaten: false });
     }
 }

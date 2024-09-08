@@ -1,15 +1,11 @@
 use std::ops::{Index, IndexMut};
 use crate::render::Instance;
-use crate::animal::{Animal, Animals, SensoryInput};
-use crate::neural_network::Network;
+use crate::animal::{Animal, Animals};
 use crate::species::SpeciesList;
 
 pub struct Egg{
     pub time: f32,
-    pub body: Instance,
-    pub brain: Network,
     pub animal: Animal,
-    pub sense: SensoryInput,
 }
 #[derive(Default)]
 pub struct Eggs{
@@ -29,20 +25,20 @@ impl Eggs {
         self.bodies.len()
     }
 
-    pub fn update(&mut self,animals: &mut Animals,species_list: &mut SpeciesList){
+    pub fn update(&mut self,animals: &mut Animals){
         (0..self.count()).rev().for_each(|i|{
             self.eggs.index_mut(i).time += 1./60.;
-            if self.eggs.index(i).time > 10.{
+            if self.eggs.index(i).time > 20.{
                 let egg = self.eggs.index(i);
-                animals.spawn(egg.body, egg.sense.clone(), egg.animal.clone(), egg.brain.clone(),species_list);
+                animals.birth(egg.animal.clone());
                 self.remove(i);
             }
         });
 
     }
 
-    pub fn spawn(&mut self,pos: [f32;2],body: Instance,sense: SensoryInput,animal: Animal,brain:Network){
+    pub fn spawn(&mut self,pos: [f32;2],animal: Animal){
         self.bodies.push(Instance::new(pos, [0.3, 0.3, 0.3], 0.0,0.04));
-        self.eggs.push(Egg { time: 0.0, body, brain, animal, sense });
+        self.eggs.push(Egg { time: 0.0, animal});
     }
 }

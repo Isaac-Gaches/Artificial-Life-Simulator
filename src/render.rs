@@ -1,17 +1,20 @@
 use std::{iter, mem};
 use std::sync::Arc;
-use egui_wgpu::ScreenDescriptor;
-use wgpu::{BindingType, Buffer, Device, Queue, Surface, TextureViewDescriptor};
+use egui_wgpu::{ScreenDescriptor};
+use wgpu::{BindingType, Buffer, Queue, Surface, Device, TextureViewDescriptor, TextureView};
 use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
 use winit::window::Window;
-use crate::animal::{Animals};
+use crate::animal::{Animal, Animals};
 use crate::eggs::Eggs;
 use crate::gui::{EguiRenderer, gui};
 use crate::input_manager::Inputs;
 use crate::plants::Plants;
 use crate::simulation_parameters::SimParams;
 use crate::statistics::Stats;
+use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+use crate::neural_network::Network;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance{
@@ -155,7 +158,7 @@ impl Renderer {
         surface.configure(&device, &config);
 
         let camera = Camera{
-            position: [0.0,0.],
+            position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
             zoom: 0.05,
             pad: 0,
         };
@@ -342,7 +345,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams,animal: Option<&Animal>) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,
@@ -414,6 +417,7 @@ impl Renderer {
             gui,
             stats,
             sim_params,
+            animal,
         );
 
         self.queue.submit(iter::once(encoder.finish()));

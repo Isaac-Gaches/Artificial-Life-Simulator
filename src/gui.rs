@@ -1,25 +1,33 @@
-use egui::{Color32, Context, RichText, Stroke, Visuals};
+use egui::{Color32, Context, emath, Frame, Pos2, RichText, Sense, Stroke, Vec2, Visuals};
 use egui::epaint::Shadow;
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
+use epaint::{CircleShape, Rect, Shape, TextureId};
 use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use winit::event::WindowEvent;
 use winit::window::Window;
+use crate::animal::Animal;
+use crate::neural_network::Network;
 use crate::simulation_parameters::SimParams;
 use crate::statistics::Stats;
 
 #[derive(Default)]
 pub struct Toggles{
     population_graphs: bool,
+    animals: bool,
+    herbivores: bool,
+    omnivores: bool,
+    carnivores: bool,
     diagnostics: bool,
     distributions: bool,
+    animal_inspect: bool
 }
 pub struct EguiRenderer {
     pub context: Context,
     toggles: Toggles,
     state: State,
-    renderer: Renderer,
+    pub renderer: Renderer,
 }
 
 impl EguiRenderer {
@@ -52,7 +60,8 @@ impl EguiRenderer {
             msaa_samples,
         );
 
-        let toggles = Toggles::default();
+        let mut toggles = Toggles::default();
+        toggles.animals = true;
 
         EguiRenderer {
             context: egui_context,
@@ -74,13 +83,14 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams),
+        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,Option<&Animal>),
         stats: &mut Stats,
         sim_params: &mut SimParams,
+        animal: Option<&Animal>
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,stats,&mut self.toggles,sim_params);
+            run_ui(&self.context,stats,&mut self.toggles,sim_params,animal);
         });
 
         self.state
@@ -117,13 +127,16 @@ impl EguiRenderer {
     }
 }
 
-pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams) {
+pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: Option<&Animal>) {
     egui::SidePanel::right("right")
         .resizable(false)
         .default_width(200.)
         .show(ui,|ui|{
             ui.heading("Statistics");
             ui.separator();
+            if ui.selectable_label(toggles.diagnostics, RichText::new("Inspector").heading()).clicked(){
+                toggles.animal_inspect = !toggles.animal_inspect;
+            }
             if ui.selectable_label(toggles.population_graphs, RichText::new("Population Graphs").heading()).clicked(){
                 toggles.population_graphs = !toggles.population_graphs;
             }
@@ -133,7 +146,9 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             if ui.selectable_label(toggles.diagnostics, RichText::new("Diagnostics").heading()).clicked(){
                 toggles.diagnostics = !toggles.diagnostics;
             }
+
             ui.separator();
+
             ui.heading("Settings");
             ui.separator();
             ui.horizontal(|ui| {
@@ -142,44 +157,174 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             });
             ui.horizontal(|ui|{
                 ui.label("Steps Per Frame");
-                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=6));
+                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=100));
             });
+            ui.horizontal(|ui|{
+                ui.label("Plants Per Second");
+                ui.add(egui::DragValue::new(&mut sim_params.plant_spawn_rate).clamp_range(0..=100));
+            });
+            ui.horizontal(|ui|{
+                ui.label("Brain Mutation Rate");
+                ui.add(egui::DragValue::new(&mut sim_params.brain_mutation_rate).clamp_range(0..=100));
+            });
+            ui.horizontal(|ui|{
+                ui.label("Physical Mutation Rate");
+                ui.add(egui::DragValue::new(&mut sim_params.physical_mutation_rate).clamp_range(0..=100));
+            });
+
             ui.separator();
+
             ui.horizontal(|ui|{
                 ui.label("Species");
                 ui.add(egui::DragValue::new(&mut sim_params.highlighted_species).clamp_range(-1..=1000));
             });
         });
 
-    if toggles.population_graphs {
-        egui::Window::new("Population Graphs")
-            .default_open(true)
-            .default_width(400.0)
+    if toggles.animal_inspect {
+        egui::Window::new("Network")
+            .default_width(550.0)
             .resizable(false)
             .show(ui, |ui| {
-                ui.collapsing(RichText::new("Plant Population"),|ui|{
-                    let pop =Line::new(PlotPoints::new(stats.plant_pop.clone()));
-                    let pop = pop.fill(0.).color(Color32::GREEN);
+                if let Some(animal) = animal {
+                    ui.horizontal(|ui| {
+                        ui.label("Angle to plant");
+                        ui.separator();
+                        ui.label("Dist to plant");
+                        ui.separator();
+                        ui.label("Angle to animal");
+                        ui.separator();
+                        ui.label("Dist to animal");
+                        ui.separator();
+                        ui.label("Same species");
+                        ui.separator();
+                        ui.label("Herbivore");
+                    });
+                    Frame::canvas(&ui.style()).show(ui, |ui| {
+                        let (mut response, painter) = ui.allocate_painter(Vec2::new(ui.available_width(), ui.available_width() * 0.5), Sense::hover());
 
-                    Plot::new("plant population").view_aspect(2.0).show(ui, |plot_ui| {
-                        plot_ui.line(pop);
+                        let to_screen = emath::RectTransform::from_to(
+                            Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
+                            response.rect,
+                        );
+
+                        let network = &animal.brain;
+
+                        let spacing_x = 0.9 / (network.layers.len() as f32 - 1.0);
+                        let neurons: Vec<Shape> = network.layers.iter().enumerate().flat_map(|(i, layer)| {
+                            let spacing = 1.9 / (layer.neurons.len() - 1) as f32;
+                            layer.neurons.iter().enumerate().map(move |(j, neuron)| {
+                                let c = (neuron.activation.abs() * 255.) as u8;
+                                let fill = Color32::from_rgb(c, c, c);
+
+                                Shape::Circle(CircleShape {
+                                    center: to_screen * Pos2::new(0.05 + j as f32 * spacing, 0.05 + i as f32 * spacing_x),
+                                    radius: 6.0,
+                                    fill,
+                                    stroke: Default::default(),
+                                })
+                            })
+                        }).collect();
+
+                        let synapses: Vec<Shape> = network.layers.iter().enumerate().flat_map(|(i, layer)| {
+                            let spacing = 1.9 / (layer.neurons.len() - 1) as f32;
+
+                            layer.neurons.iter().enumerate().flat_map(move |(j, neuron)| {
+                                let p1 = Pos2::new(0.05 + j as f32 * spacing, 0.05 + i as f32 * spacing_x);
+                                let spacing2 = 1.9 / (neuron.weights.len() as f32 - 1.);
+
+                                neuron.weights.iter().enumerate().map(move |(k, weight)| {
+                                    let color = if *weight > 0. { Color32::from_rgb(0, 255, 0) } else { Color32::from_rgb(255, 0, 0) };
+
+                                    let width = (weight * 2.0).abs().min(3.0);
+
+                                    let p2 = Pos2::new(0.05 + k as f32 * spacing2, 0.05 + (i as f32 - 1.0) * spacing_x);
+
+                                    Shape::LineSegment { points: [to_screen.transform_pos(p1), to_screen.transform_pos(p2)], stroke: Stroke { width, color } }
+                                })
+                            })
+                        }).collect();
+
+                        painter.extend(synapses);
+                        painter.extend(neurons);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Move forward");
+                        ui.separator();
+                        ui.label("                                                      Turn                                                          ");
+                        ui.separator();
+                        ui.label("Aggression");
+                    });
+
+                    ui.separator();
+
+                    ui.horizontal(|ui|{
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Species: {}", animal.species_id)));
+                            ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
+                        });
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Energy: {:.2}", animal.resources.energy)));
+                            ui.label(RichText::new(format!("Protein: {:.2}", animal.resources.protein)));
+                        });
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
+                            ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
+                        });
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Speed: {:.2}", animal.combat_stats.speed)));
+                            ui.label(RichText::new(format!("Size: {:.2}", animal.body.scale)));
+                        });
+                    });
+                }
+                else{
+                    ui.label(RichText::new("No Animal Selected"));
+                }
+            });
+    }
+    if toggles.population_graphs {
+        egui::Window::new("Population Graphs")
+            .default_width(550.0)
+            .resizable(true)
+            .show(ui, |ui| {
+                ui.collapsing(RichText::new("Animals"),|ui|{
+                    let animals =Line::new(PlotPoints::new(stats.animal_pop.clone())).color(Color32::WHITE);
+                    let herb = Line::new(PlotPoints::new(stats.herb_pop.clone())).color(Color32::GREEN);
+                    let omni = Line::new(PlotPoints::new(stats.omni_pop.clone())).color(Color32::GOLD);
+                    let carn = Line::new(PlotPoints::new(stats.carn_pop.clone())).color(Color32::RED);
+
+                    ui.horizontal(|ui|{
+                        ui.vertical(|ui|{
+                            ui.add(egui::Checkbox::new(&mut toggles.animals,"All"));
+                            ui.add(egui::Checkbox::new(&mut toggles.herbivores,"Herbivore"));
+                            ui.add(egui::Checkbox::new(&mut toggles.omnivores,"Omnivores"));
+                            ui.add(egui::Checkbox::new(&mut toggles.carnivores,"Carnivores"));
+                        });
+                        Plot::new("animal population graph").view_aspect(2.0).show(ui, |plot_ui| {
+                            if toggles.animals{ plot_ui.line(animals); }
+                            if toggles.herbivores{ plot_ui.line(herb); }
+                            if toggles.omnivores{ plot_ui.line(omni); }
+                            if toggles.carnivores{ plot_ui.line(carn); }
+                        });
                     });
                 });
 
-                ui.collapsing(RichText::new("Animal Population"),|ui|{
-                    let pop =Line::new(PlotPoints::new(stats.animal_pop.clone()));
-                    let pop = pop.fill(0.).color(Color32::WHITE);
+                ui.collapsing(RichText::new("Plants"),|ui|{
+                    let plants =Line::new(PlotPoints::new(stats.plant_pop.clone())).color(Color32::GREEN);
 
-                    Plot::new("animal population").view_aspect(2.0).show(ui, |plot_ui| {
-                        plot_ui.line(pop);
+                    Plot::new("plant population graph").view_aspect(2.0).show(ui, |plot_ui| {
+                        plot_ui.line(plants);
                     });
                 });
+
+                ui.separator();
+
+                if ui.selectable_label(false, RichText::new("Clear Graphs")).clicked(){
+                    stats.clear_graph_data();
+                }
             });
     }
     if toggles.diagnostics {
         egui::Window::new("Diagnostics")
-            .default_open(true)
-            .default_width(400.0)
             .resizable(false)
             .show(ui, |ui| {
                 ui.label(RichText::new(format!("FPS: {}",stats.fps)));
@@ -195,8 +340,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
     }
     if toggles.distributions {
         egui::Window::new("Distributions")
-            .default_open(true)
-            .default_width(400.0)
+            .default_width(550.0)
             .resizable(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
