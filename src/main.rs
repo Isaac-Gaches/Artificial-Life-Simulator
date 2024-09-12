@@ -9,7 +9,9 @@ mod collisions;
 mod simulation_parameters;
 mod species;
 mod input_manager;
+mod save_system;
 
+use std::fs;
 use render::Renderer;
 
 use winit::event::WindowEvent;
@@ -22,16 +24,20 @@ use winit::{
 };
 use std::sync::Arc;
 use std::time::SystemTime;
+use serde::{Deserialize, Serialize};
+use sysinfo::System;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use animal::*;
 use statistics::Stats;
 use crate::collisions::Collisions;
 use crate::eggs::Eggs;
 use crate::input_manager::Inputs;
-use crate::neural_network::Network;
 use crate::plants::Plants;
 use crate::simulation_parameters::SimParams;
 use crate::species::SpeciesList;
+use std::fs::File;
+use std::io::{BufWriter, Read, Write};
+use crate::save_system::SaveSystem;
 
 fn main() {
     pollster::block_on(run());
@@ -43,19 +49,24 @@ const WORLD_HEIGHT: f32 = 80.0;
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
+    let mut renderer = Renderer::new(window).await;
+
     let mut graph_timer = SystemTime::now();
     let mut diagnostic_timer = SystemTime::now();
-    let mut frames = 0;
-    let mut step = 0;
-    let mut renderer = Renderer::new(window).await;
-    let mut animals = Animals::genesis();
-    let mut plants = Plants::genesis();
-    let mut stats = Stats::default();
-    let mut eggs = Eggs::default();
-    let mut collisions = Collisions::new();
-    let mut sim_params = SimParams::default();
-    let mut species_list = SpeciesList::default();
     let mut inputs = Inputs::default();
+    let mut frames = 0;
+    let mut system = System::default();
+
+   /* let step = 0;
+    let animals = Animals::genesis();
+    let plants = Plants::genesis();
+    let stats = Stats::default();
+    let eggs = Eggs::default();
+    let collisions = Collisions::new();
+    let sim_params = SimParams::default();
+    let species_list = SpeciesList::default();*/
+
+    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -73,6 +84,7 @@ pub async fn run() {
                             Key::Character("d") => inputs.right = true,
                             Key::Character("=") => inputs.plus = true,
                             Key::Character("-") => inputs.minus = true,
+                            Key::Character("q") => { SaveSystem::save(step, animals.clone(), plants.clone(), eggs.clone(), collisions.clone(), species_list.clone(),stats.clone(),sim_params.clone()); },
                             _ => (),
                         }
                     }
@@ -93,7 +105,7 @@ pub async fn run() {
                 }
                 WindowEvent::RedrawRequested => {
                     if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
-                        stats.update_diagnostics(frames);
+                        stats.update_diagnostics(frames,&mut system);
                         frames = 0;
                         diagnostic_timer = SystemTime::now();
                     }

@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use crate::animal::Animal;
-
+#[derive(Serialize,Deserialize,Clone)]
 pub struct Stats{
     pub fps: usize,
     pub animal_pop: Vec<[f64;2]>,
@@ -8,7 +9,7 @@ pub struct Stats{
     pub herb_pop: Vec<[f64;2]>,
     pub omni_pop: Vec<[f64;2]>,
     pub carn_pop: Vec<[f64;2]>,
-    system: System,
+  //  system: System,
     pub used_mem: u64,
     pub tot_mem: u64,
     pub cpu_usages: Vec<f32>,
@@ -26,7 +27,7 @@ impl Default for Stats{
             herb_pop: vec![],
             omni_pop: vec![],
             carn_pop: vec![],
-            system: Default::default(),
+          //  system: Default::default(),
             used_mem: 0,
             tot_mem: 0,
             cpu_usages: vec![],
@@ -45,13 +46,13 @@ impl Stats{
         self.omni_pop = vec![];
         self.carn_pop = vec![];
     }
-    pub fn update_diagnostics(&mut self, frames: usize){
-        self.system.refresh_memory();
-        self.system.refresh_cpu_usage();
-        self.cpu_usages = self.system.cpus().iter().map(|cpu| cpu.cpu_usage()).collect::<Vec<f32>>();
+    pub fn update_diagnostics(&mut self, frames: usize,system: &mut System){
+        system.refresh_memory();
+        system.refresh_cpu_usage();
+        self.cpu_usages = system.cpus().iter().map(|cpu| cpu.cpu_usage()).collect::<Vec<f32>>();
         self.tot_cpu_usage = self.cpu_usages.iter().sum::<f32>()/self.cpu_usages.len() as f32;
-        self.tot_mem = self.system.total_memory();
-        self.used_mem = self.system.used_memory();
+        self.tot_mem = system.total_memory();
+        self.used_mem = system.used_memory();
         self.fps = frames;
     }
     pub fn update_graphs(&mut self, animal_population: usize, plant_population: usize, animals: &[Animal]){

@@ -1,13 +1,14 @@
 use std::ops::{Index, IndexMut};
+use serde::{Deserialize, Serialize};
 use crate::render::Instance;
 use crate::animal::{Animal, Animals};
-use crate::species::SpeciesList;
 
+#[derive(Serialize,Deserialize,Clone)]
 pub struct Egg{
     pub time: f32,
     pub animal: Animal,
 }
-#[derive(Default)]
+#[derive(Default,Serialize,Deserialize,Clone)]
 pub struct Eggs{
     pub eggs: Vec<Egg>,
     pub bodies: Vec<Instance>,

@@ -2,11 +2,14 @@ use std::f32::consts::PI;
 use std::ops::{Index, IndexMut};
 use crate::render::Instance;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Plant{
     pub eaten: bool,
 }
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Plants{
     pub plants: Vec<Plant>,
     pub bodies: Vec<Instance>,

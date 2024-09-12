@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize,Deserialize,Clone)]
 pub struct SimParams{
     pub steps_per_frame: i32,
     pub plant_spawn_rate: i32,

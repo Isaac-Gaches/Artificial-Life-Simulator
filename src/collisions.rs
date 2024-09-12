@@ -1,4 +1,5 @@
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use crate::animal::Animals;
 use crate::plants::Plants;
 use crate::render::Instance;
@@ -9,11 +10,12 @@ pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize + 2;
 pub const CELL_SIZE: f32 = 0.4;
 pub const DIV: f32 = 1.0/CELL_SIZE;
 
+#[derive(Serialize,Deserialize,Clone)]
 pub struct Collisions{
     pub animals_grid: Vec<Cell>,
     pub plants_grid: Vec<Cell>,
 }
-#[derive(Default,Clone)]
+#[derive(Default,Clone,Serialize,Deserialize)]
 pub struct Cell{
     pub object_ids: Vec<usize>,
 }

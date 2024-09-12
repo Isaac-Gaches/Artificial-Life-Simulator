@@ -1,15 +1,17 @@
 use egui_graphs::Graph;
 use petgraph::prelude::StableGraph;
 use rand::Rng;
-#[derive(Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Network{
     pub layers: Vec<Layer>,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Layer{
     pub neurons: Vec<Neuron>,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Neuron{
     pub activation: f32,
     pub bias: f32,

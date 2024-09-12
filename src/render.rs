@@ -1,6 +1,7 @@
 use std::{iter, mem};
 use std::sync::Arc;
 use egui_wgpu::{ScreenDescriptor};
+use serde::{Deserialize, Serialize};
 use wgpu::{BindingType, Buffer, Queue, Surface, Device, TextureViewDescriptor, TextureView};
 use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
@@ -16,7 +17,7 @@ use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::neural_network::Network;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable,Serialize,Deserialize)]
 pub struct Instance{
     pub position: [f32;2],
     pub rotation: f32,

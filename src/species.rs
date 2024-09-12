@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
 use crate::animal::Animal;
 
+#[derive(Serialize,Deserialize,Clone)]
 struct Species{
     parent: usize,
     specimen: Animal,
@@ -10,7 +12,7 @@ impl Species{
         self.specimen.brain.compare(&animal.brain)
     }
 }
-#[derive(Default)]
+#[derive(Default,Serialize,Deserialize,Clone)]
 pub struct SpeciesList{
     species: Vec<Species>,
 }

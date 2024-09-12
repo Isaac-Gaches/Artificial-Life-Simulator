@@ -2,6 +2,7 @@ use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
 use rand::Rng;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use crate::eggs::Eggs;
 use crate::neural_network::Network;
 use crate::plants::Plants;
@@ -11,7 +12,7 @@ use crate::collisions::{CELL_SIZE, CELLS_HEIGHT, CELLS_WIDTH, Collisions};
 use crate::simulation_parameters::SimParams;
 use crate::species::SpeciesList;
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Animal{
     pub species_id: usize,
     pub maturity: f32,
@@ -24,31 +25,31 @@ pub struct Animal{
     pub reproduction_stats: ReproductionStats,
     pub combat_stats: CombatStats,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct CombatStats{
     pub carnivore_factor: f32,
     pub aggression: f32,
     pub attack: f32,
     pub speed: f32,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct ReproductionStats{
     pub asexual_factor: f32,
     pub offspring_investment: f32,
     birth_timer: f32,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct MaxStats{
     speed: f32,
     size: f32,
     attack: f32,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Resources{
     pub energy: f32,
     pub protein: f32,
 }
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct SensoryInput{
 
 }
@@ -127,6 +128,7 @@ impl SensoryInput{
         input
     }
 }
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Animals{
     pub animals: Vec<Animal>
 }
