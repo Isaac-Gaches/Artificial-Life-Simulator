@@ -1,43 +1,24 @@
-mod gui;
-mod statistics;
-mod render;
-mod animal;
-mod plants;
-mod neural_network;
-mod eggs;
-mod collisions;
-mod simulation_parameters;
-mod species;
-mod input_manager;
-mod save_system;
 
-use std::fs;
-use render::Renderer;
+mod rendering;
+mod utilities;
+mod environment;
+
+use rendering::render::Renderer;
 
 use winit::event::WindowEvent;
 
 use winit::{
     event::*,
     event_loop::EventLoop,
-    keyboard::{Key},
-    window::{WindowBuilder},
+    keyboard::Key,
+    window::WindowBuilder,
 };
 use std::sync::Arc;
 use std::time::SystemTime;
-use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
-use animal::*;
-use statistics::Stats;
-use crate::collisions::Collisions;
-use crate::eggs::Eggs;
-use crate::input_manager::Inputs;
-use crate::plants::Plants;
-use crate::simulation_parameters::SimParams;
-use crate::species::SpeciesList;
-use std::fs::File;
-use std::io::{BufWriter, Read, Write};
-use crate::save_system::SaveSystem;
+use crate::utilities::input_manager::Inputs;
+use crate::utilities::save_system::SaveSystem;
 
 fn main() {
     pollster::block_on(run());
@@ -141,7 +122,7 @@ pub async fn run() {
 
                     renderer.update(&animals,&plants,&eggs,&inputs);
 
-                    let net = if animals.animals.len() > 0 { Some(&animals.animals[0]) } else { None };
+                    let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 
                     match renderer.render(&mut stats,&mut sim_params,net) {
                         Ok(_) => {}
