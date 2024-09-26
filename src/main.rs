@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::System;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+use crate::environment::rocks::RockMap;
 use crate::utilities::input_manager::Inputs;
 use crate::utilities::save_system::SaveSystem;
 
@@ -38,14 +39,15 @@ pub async fn run() {
     let mut frames = 0;
     let mut system = System::default();
 
-   /* let step = 0;
-    let animals = Animals::genesis();
-    let plants = Plants::genesis();
-    let stats = Stats::default();
-    let eggs = Eggs::default();
-    let collisions = Collisions::new();
-    let sim_params = SimParams::default();
-    let species_list = SpeciesList::default();*/
+/*    let mut step = 0;
+    let mut animals = environment::animal::Animals::genesis();
+    let mut plants = environment::plants::Plants::genesis();
+    let mut stats = utilities::statistics::Stats::default();
+    let mut eggs = environment::eggs::Eggs::default();
+    let mut collisions = environment::collisions::Collisions::new();
+    let mut sim_params = utilities::simulation_parameters::SimParams::default();
+    let mut species_list = environment::species::SpeciesList::default();
+    let mut rocks = RockMap::new();*/
 
     let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params) = SaveSystem::load().open();
 

@@ -17,7 +17,7 @@ use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable,Serialize,Deserialize)]
-pub struct Instance{
+pub struct Instance{ //28 bytes
     pub position: [f32;2],
     pub rotation: f32,
     pub scale: f32,
@@ -74,7 +74,7 @@ const NUM_INDICES: u32 = 6;
 struct Camera {
     position: [f32;2],
     zoom: f32,
-    pad: u32,
+    ratio: f32,
 }
 
 pub struct Renderer {
@@ -85,19 +85,24 @@ pub struct Renderer {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
-    camera_buffer: Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera: Camera,
+    egui: EguiRenderer,
+    buffers: Buffers
+}
+struct Buffers{
+    camera_buffer: Buffer,
     triangle_vertex_buffer: Buffer,
     quad_vertex_buffer: Buffer,
     quad_index_buffer: Buffer,
-    egui: EguiRenderer,
     animal_buffer: Buffer,
     animal_count: u32,
     plant_buffer: Buffer,
     plant_count: u32,
     egg_buffer: Buffer,
     egg_count: u32,
+    rock_buffer: Buffer,
+    rock_count: u32,
 }
 
 impl Renderer {
@@ -160,7 +165,7 @@ impl Renderer {
         let camera = Camera{
             position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
             zoom: 0.05,
-            pad: 0,
+            ratio: 1.0,
         };
 
         let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor{
@@ -302,24 +307,46 @@ impl Renderer {
 
         let animal_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render animals"),
-            size: 6400000,
+            size: 28000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let plant_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 6400000,
+            size: 840000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 6400000,
+            size: 5600,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+
+        let rock_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("Buffer to render plants"),
+            size: 280000,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let buffers = Buffers{
+            camera_buffer,
+            triangle_vertex_buffer,
+            quad_vertex_buffer,
+            quad_index_buffer,
+            animal_buffer,
+            animal_count: 0,
+            plant_buffer,
+            plant_count: 0,
+            egg_buffer,
+            egg_count: 0,
+            rock_buffer,
+            rock_count: 0,
+        };
 
         Self{
             window,
@@ -329,19 +356,10 @@ impl Renderer {
             config,
             size,
             render_pipeline,
-            camera_buffer,
             camera_bind_group,
             camera,
-            triangle_vertex_buffer,
-            quad_vertex_buffer,
-            quad_index_buffer,
             egui,
-            animal_buffer,
-            animal_count: 0,
-            plant_buffer,
-            plant_count:0,
-            egg_buffer,
-            egg_count: 0,
+            buffers
         }
     }
 
@@ -385,20 +403,20 @@ impl Renderer {
 
         //animals
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.triangle_vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.animal_buffer.slice(..));
+        render_pass.set_vertex_buffer(0, self.buffers.triangle_vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.buffers.animal_buffer.slice(..));
         render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
-        render_pass.draw(0..3,0..self.animal_count);
+        render_pass.draw(0..3,0..self.buffers.animal_count);
 
         //plants
-        render_pass.set_vertex_buffer(0, self.quad_vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.set_vertex_buffer(1, self.plant_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.plant_count);
+        render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_vertex_buffer(1, self.buffers.plant_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.plant_count);
 
         //eggs
-        render_pass.set_vertex_buffer(1, self.egg_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.egg_count);
+        render_pass.set_vertex_buffer(1, self.buffers.egg_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.egg_count);
 
         drop(render_pass);
 
@@ -444,19 +462,20 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs){
-        self.animal_count = animals.count() as u32;
-        self.plant_count = plants.count() as u32;
-        self.egg_count = eggs.count() as u32;
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,){
+        self.buffers.animal_count = animals.count() as u32;
+        self.buffers.plant_count = plants.count() as u32;
+        self.buffers.egg_count = eggs.count() as u32;
 
         self.camera.position[1] += if inputs.up {0.1} else if inputs.down {-0.1} else {0.0};
         self.camera.position[0] += if inputs.right {0.1} else if inputs.left {-0.1} else {0.0};
         self.camera.zoom += if inputs.plus {0.002} else if inputs.minus {-0.002} else {0.0};
+        self.camera.ratio = self.size.height as f32/self.size.width as f32;
 
-        self.queue.write_buffer(&self.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
-        self.queue.write_buffer(&self.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
-        self.queue.write_buffer(&self.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
-        self.queue.write_buffer(&self.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
+        self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
+        self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
+        self.queue.write_buffer(&self.buffers.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
+        self.queue.write_buffer(&self.buffers.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
     }
 
     pub fn window(&self) -> &Window {

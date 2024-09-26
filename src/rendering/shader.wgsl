@@ -17,6 +17,7 @@ struct VertexOutput {
 struct Camera{
     position: vec2<f32>,
     zoom: f32,
+    ratio: f32,
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
@@ -31,7 +32,7 @@ fn vs_main(
     var cs: f32 = cos(instance.rotation);
     var sn: f32 = sin(instance.rotation);
     var v: vec3<f32> = vec3<f32>((vertex.position.x - 0.5) * cs - (vertex.position.y - 0.5) * sn,(vertex.position.x - 0.5) * sn + (vertex.position.y - 0.5) * cs,vertex.position.z);
-    out.clip_position = vec4<f32>(((v*instance.scale+vec3<f32>(instance.position-camera.position,0.)))*camera.zoom, 1.0);
+    out.clip_position = vec4<f32>(((v*instance.scale+vec3<f32>(instance.position-camera.position,0.)))*camera.zoom, 1.0) * vec4<f32>(camera.ratio,1.0,1.0,1.0);
     return out;
 }
 
