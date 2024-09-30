@@ -47,9 +47,10 @@ pub async fn run() {
     let mut collisions = environment::collisions::Collisions::new();
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
-    let mut rocks = RockMap::new();*/
+    let mut rocks = RockMap::new();
+    rocks.randomise();*/
 
-    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params) = SaveSystem::load().open();
+    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -67,7 +68,7 @@ pub async fn run() {
                             Key::Character("d") => inputs.right = true,
                             Key::Character("=") => inputs.plus = true,
                             Key::Character("-") => inputs.minus = true,
-                            Key::Character("q") => { SaveSystem::save(step, animals.clone(), plants.clone(), eggs.clone(), collisions.clone(), species_list.clone(),stats.clone(),sim_params.clone()); },
+                            Key::Character("q") => { SaveSystem::save(step, animals.clone(), plants.clone(), eggs.clone(), collisions.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone()); },
                             _ => (),
                         }
                     }
@@ -122,7 +123,7 @@ pub async fn run() {
                         step+=1;
                     }
 
-                    renderer.update(&animals,&plants,&eggs,&inputs);
+                    renderer.update(&animals,&plants,&eggs,&inputs,&rocks);
 
                     let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 

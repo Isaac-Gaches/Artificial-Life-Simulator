@@ -14,6 +14,7 @@ use crate::environment::plants::Plants;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+use crate::environment::rocks::RockMap;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable,Serialize,Deserialize)]
@@ -328,7 +329,7 @@ impl Renderer {
 
         let rock_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 280000,
+            size: 2520000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -388,9 +389,9 @@ impl Renderer {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.05,
-                        g: 0.05,
-                        b: 0.05,
+                        r: 0.02,
+                        g: 0.1,
+                        b: 0.2,
                         a: 1.0,
                     }),
                     store: wgpu::StoreOp::Store,
@@ -417,6 +418,10 @@ impl Renderer {
         //eggs
         render_pass.set_vertex_buffer(1, self.buffers.egg_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.egg_count);
+
+        //rocks
+        render_pass.set_vertex_buffer(1, self.buffers.rock_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.rock_count);
 
         drop(render_pass);
 
@@ -462,10 +467,11 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,rocks: &RockMap){
         self.buffers.animal_count = animals.count() as u32;
         self.buffers.plant_count = plants.count() as u32;
         self.buffers.egg_count = eggs.count() as u32;
+        self.buffers.rock_count = rocks.count() as u32;
 
         self.camera.position[1] += if inputs.up {0.1} else if inputs.down {-0.1} else {0.0};
         self.camera.position[0] += if inputs.right {0.1} else if inputs.left {-0.1} else {0.0};
@@ -476,6 +482,7 @@ impl Renderer {
         self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
+        self.queue.write_buffer(&self.buffers.rock_buffer,0,bytemuck::cast_slice(rocks.instances().as_slice()));
     }
 
     pub fn window(&self) -> &Window {
