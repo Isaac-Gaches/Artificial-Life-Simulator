@@ -31,7 +31,7 @@ impl Plants {
 
     pub fn handle_collision(&mut self,plant_id:usize)->(f32,f32){
         self.plants.index_mut(plant_id).eaten = true;
-        (70.,1.0)
+        (70.,0.1)
     }
 
     pub fn count(&self)->usize{

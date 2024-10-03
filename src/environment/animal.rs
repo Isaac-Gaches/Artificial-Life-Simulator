@@ -1,5 +1,6 @@
 use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
+use std::time::SystemTime;
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,38 @@ pub struct Animal{
     max_stats: MaxStats,
     pub reproduction_stats: ReproductionStats,
     pub combat_stats: CombatStats,
+}
+
+impl Animal{
+    fn offspring(&self, sim_params: &SimParams,species_list: &mut SpeciesList) ->Self{
+        let mut new_animal = self.clone();
+
+        let mut rng = rand::thread_rng();
+        let mutation_strength = sim_params.physical_mutation_rate/100.;
+
+        new_animal.maturity = 0.;
+        new_animal.resources.protein = 0.0;
+        new_animal.resources.energy = self.reproduction_stats.offspring_investment;
+
+        new_animal.brain.mutate(sim_params.brain_mutation_rate/100.);
+
+        new_animal.max_stats.speed = (new_animal.max_stats.speed + new_animal.max_stats.speed * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 4.);
+        new_animal.max_stats.attack = (new_animal.max_stats.attack + new_animal.max_stats.attack * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 10.);
+        new_animal.max_stats.size = (new_animal.max_stats.size + new_animal.max_stats.size * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.16,0.5);
+        new_animal.reproduction_stats.offspring_investment = (new_animal.reproduction_stats.offspring_investment + new_animal.reproduction_stats.offspring_investment * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(200., 400.);
+        new_animal.combat_stats.carnivore_factor = (new_animal.combat_stats.carnivore_factor + new_animal.combat_stats.carnivore_factor * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.,1.0);
+
+        new_animal.combat_stats.speed = new_animal.max_stats.speed * 0.5;
+        new_animal.combat_stats.attack = new_animal.max_stats.attack * 0.5;
+        new_animal.body.scale = new_animal.max_stats.size * 0.5;
+
+        new_animal.body.color = [1.,1.,1.];
+
+        new_animal.lean_mass = new_animal.combat_stats.attack + new_animal.combat_stats.speed * 4.0 + new_animal.body.scale * 10.;
+        new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
+
+        new_animal
+    }
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct CombatStats{
@@ -180,55 +213,32 @@ impl Animals{
             let animal = self.animals.index_mut(i);
 
             animal.brain.input(input);
-            let response = animal.brain.propagate();
 
-            if animal.resources.energy > animal.reproduction_stats.offspring_investment*1.2 + 300. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.protein > animal.lean_mass{
+            if animal.resources.energy > animal.reproduction_stats.offspring_investment*1.2 + 300. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.protein > animal.lean_mass*0.1{
                 animal.reproduction_stats.birth_timer = 15. + animal.reproduction_stats.offspring_investment*0.05;
                 animal.resources.energy -= animal.reproduction_stats.offspring_investment * 1.2;
-                animal.resources.protein -= animal.lean_mass;
+                animal.resources.protein -= animal.lean_mass*0.1;
 
-                let mut new_animal = animal.clone();
+                let offspring = animal.offspring(sim_params,species_list);
 
-                let mut rng = rand::thread_rng();
-                let mutation_strength = sim_params.physical_mutation_rate/100.;
-
-                new_animal.maturity = 0.;
-                new_animal.resources.protein = 0.0;
-                new_animal.resources.energy = animal.reproduction_stats.offspring_investment;
-
-                new_animal.brain.mutate(sim_params.brain_mutation_rate/100.);
-
-                new_animal.max_stats.speed = (new_animal.max_stats.speed + new_animal.max_stats.speed * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 4.);
-                new_animal.max_stats.attack = (new_animal.max_stats.attack + new_animal.max_stats.attack * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 10.);
-                new_animal.max_stats.size = (new_animal.max_stats.size + new_animal.max_stats.size * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.16,0.5);
-                new_animal.reproduction_stats.offspring_investment = (new_animal.reproduction_stats.offspring_investment + new_animal.reproduction_stats.offspring_investment * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(200., 400.);
-                new_animal.combat_stats.carnivore_factor = (new_animal.combat_stats.carnivore_factor + new_animal.combat_stats.carnivore_factor * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.,1.0);
-
-                new_animal.combat_stats.speed = new_animal.max_stats.speed * 0.5;
-                new_animal.combat_stats.attack = new_animal.max_stats.attack * 0.5;
-                new_animal.body.scale = new_animal.max_stats.size * 0.5;
-
-                new_animal.body.color = [1.,1.,1.];
-
-                new_animal.lean_mass = new_animal.combat_stats.attack + new_animal.combat_stats.speed * 4.0 + new_animal.body.scale * 10.;
-                animal.species_id = species_list.speciate(&new_animal,animal.species_id);
-
-                eggs.spawn(animal.body.position, new_animal);
+                eggs.spawn(animal.body.position,offspring);
             }
+        }
+
+        self.animals.par_iter_mut().for_each(|animal|{
+            let response = animal.brain.propagate();
 
             animal.body.position[0] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.cos() * animal.combat_stats.speed;
             animal.body.position[1] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.sin() * animal.combat_stats.speed;
             animal.body.rotation += response.index(1) * 0.04 * animal.combat_stats.speed;
             animal.combat_stats.aggression = response.index(2).max(0.);
             animal.resources.energy -= animal.body.scale * 0.2 + response.index(0).max(0.) * animal.combat_stats.speed * 0.05 + response.index(1).abs() * animal.combat_stats.speed * 0.05 + 0.3 * animal.combat_stats.aggression.max(0.);
-        }
 
-        self.animals.par_iter_mut().for_each(|animal|{
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
-            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass  {
+            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass*0.1  {
                 animal.maturity += 1.;
-                animal.resources.protein -= animal.lean_mass;
+                animal.resources.protein -= animal.lean_mass*0.1;
                 animal.combat_stats.attack = animal.max_stats.attack * (0.5 + animal.maturity * 0.05);
                 animal.combat_stats.speed = animal.max_stats.speed * (0.5 + animal.maturity * 0.05);
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);
@@ -270,15 +280,17 @@ impl Animals{
             let damage_j = self.animals.index(other_animal_id).combat_stats.aggression * self.animals.index(other_animal_id).combat_stats.attack * self.animals.index(animal_id).body.scale;
 
             if damage_i > damage_j {
-                self.animals.index_mut(animal_id).resources.energy += (self.animals.index(other_animal_id).resources.energy+self.animals.index(other_animal_id).lean_mass) * (0.4 + 0.6 * self.animals.index(animal_id).combat_stats.carnivore_factor);
-                self.animals.index_mut(animal_id).resources.protein += self.animals.index(other_animal_id).lean_mass * (0.4 + 0.6 * self.animals.index(animal_id).combat_stats.carnivore_factor);
-                self.animals.index_mut(other_animal_id).resources.energy = 0.;
+                self.animal_collision(animal_id,other_animal_id);
             } else if damage_j > damage_i{
-                self.animals.index_mut(other_animal_id).resources.energy += (self.animals.index(other_animal_id).resources.energy+self.animals.index(other_animal_id).lean_mass) * (0.4 + 0.6 * self.animals.index(other_animal_id).combat_stats.carnivore_factor);
-                self.animals.index_mut(other_animal_id).resources.protein += self.animals.index(animal_id).lean_mass * (0.4 + 0.6 * self.animals.index(other_animal_id).combat_stats.carnivore_factor);
-                self.animals.index_mut(animal_id).resources.energy = 0.;
+                self.animal_collision(other_animal_id,animal_id);
             }
         }
+    }
+
+    fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize){
+        self.animals.index_mut(animal_id).resources.energy += (self.animals.index(other_animal_id).resources.energy+self.animals.index(other_animal_id).lean_mass) * (4.0 + 6.0 * self.animals.index(animal_id).combat_stats.carnivore_factor);
+        self.animals.index_mut(animal_id).resources.protein += self.animals.index(other_animal_id).lean_mass * (0.4 + 0.6 * self.animals.index(animal_id).combat_stats.carnivore_factor);
+        self.animals.index_mut(other_animal_id).resources.energy = 0.;
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){

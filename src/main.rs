@@ -39,7 +39,7 @@ pub async fn run() {
     let mut frames = 0;
     let mut system = System::default();
 
-/*    let mut step = 0;
+    let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
     let mut stats = utilities::statistics::Stats::default();
@@ -48,9 +48,9 @@ pub async fn run() {
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
     let mut rocks = RockMap::new();
-    rocks.randomise();*/
+    rocks.randomise();
 
-    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+   // let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -108,17 +108,24 @@ pub async fn run() {
                             }
                         }
 
-                        if step%4 == 0{
+                      //  let now = SystemTime::now();
+                        if step%6 == 0{
                             animals.kill();
                             plants.kill();
                             collisions.update_animal_grid(animals.instances().as_slice());
                             collisions.update_plant_grid(plants.instances());
                         }
+                      //  println!("grid: {}",now.elapsed().unwrap().as_micros());
 
+                      //  let now = SystemTime::now();
                         collisions.handle_collisions(&mut animals,&mut plants);
+                       // println!("col: {}",now.elapsed().unwrap().as_micros());
 
                         eggs.update(&mut animals);
+
+                        //let now = SystemTime::now();
                         animals.update(&mut plants,&mut eggs,&mut sim_params,&collisions,&mut species_list);
+                       // println!("up: {}",now.elapsed().unwrap().as_micros());
 
                         step+=1;
                     }
