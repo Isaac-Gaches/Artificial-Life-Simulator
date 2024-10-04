@@ -260,6 +260,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Species: {}", animal.species_id)));
                             ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
+                            ui.label(RichText::new(format!("Offspring Invest: {:.2}", animal.reproduction_stats.offspring_investment)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Energy: {:.2}", animal.resources.energy)));

@@ -35,16 +35,16 @@ impl Animal{
         let mutation_strength = sim_params.physical_mutation_rate/100.;
 
         new_animal.maturity = 0.;
-        new_animal.resources.protein = 0.0;
-        new_animal.resources.energy = self.reproduction_stats.offspring_investment;
+        new_animal.resources.protein = self.reproduction_stats.offspring_investment * self.lean_mass * 0.1;
+        new_animal.resources.energy = 100. + self.reproduction_stats.offspring_investment * 10.;
 
         new_animal.brain.mutate(sim_params.brain_mutation_rate/100.);
 
-        new_animal.max_stats.speed = (new_animal.max_stats.speed + new_animal.max_stats.speed * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 4.);
-        new_animal.max_stats.attack = (new_animal.max_stats.attack + new_animal.max_stats.attack * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 10.);
-        new_animal.max_stats.size = (new_animal.max_stats.size + new_animal.max_stats.size * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.16,0.5);
-        new_animal.reproduction_stats.offspring_investment = (new_animal.reproduction_stats.offspring_investment + new_animal.reproduction_stats.offspring_investment * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(200., 400.);
-        new_animal.combat_stats.carnivore_factor = (new_animal.combat_stats.carnivore_factor + new_animal.combat_stats.carnivore_factor * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.,1.0);
+        new_animal.max_stats.speed = (new_animal.max_stats.speed + 4.0 * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 4.);
+        new_animal.max_stats.attack = (new_animal.max_stats.attack + 10. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1., 10.);
+        new_animal.max_stats.size = (new_animal.max_stats.size + 0.5 * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.16,0.5);
+        new_animal.reproduction_stats.offspring_investment = (new_animal.reproduction_stats.offspring_investment + 100. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0., 10.);
+        new_animal.combat_stats.carnivore_factor = (new_animal.combat_stats.carnivore_factor + 1.0 * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.,1.0);
 
         new_animal.combat_stats.speed = new_animal.max_stats.speed * 0.5;
         new_animal.combat_stats.attack = new_animal.max_stats.attack * 0.5;
@@ -176,11 +176,11 @@ impl Animals{
         let mut rng = rand::thread_rng();
 
         let senses = SensoryInput{ };
-        let brain = Network::random(&[6,8,8,3]);
+        let brain = Network::random(&[6,12,3]);
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(1.0..10.)};
         let body = Instance::new([rng.gen_range(0.0..WORLD_WIDTH), rng.gen_range(0.0..WORLD_HEIGHT)], [1.,1.,1.], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let resources = Resources{ energy: 300.0, protein: 0.0 };
-        let reproduction_stats = ReproductionStats{ asexual_factor: rng.gen_range(0.0..=1.0), offspring_investment: rng.gen_range(200.0..400.0), birth_timer: 0.0, };
+        let reproduction_stats = ReproductionStats{ asexual_factor: rng.gen_range(0.0..=1.0), offspring_investment: rng.gen_range(0.0..10.0), birth_timer: 0.0, };
         let combat_stats = CombatStats{ carnivore_factor: rng.gen_range(0.0..=1.0), aggression: 0.0, attack: max_stats.attack * 0.5, speed: max_stats.speed * 0.5, };
 
         let animal = Animal{
@@ -214,10 +214,10 @@ impl Animals{
 
             animal.brain.input(input);
 
-            if animal.resources.energy > animal.reproduction_stats.offspring_investment*1.2 + 300. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.protein > animal.lean_mass*0.1{
-                animal.reproduction_stats.birth_timer = 15. + animal.reproduction_stats.offspring_investment*0.05;
-                animal.resources.energy -= animal.reproduction_stats.offspring_investment * 1.2;
-                animal.resources.protein -= animal.lean_mass*0.1;
+            if animal.resources.energy > 100. + (animal.reproduction_stats.offspring_investment * 20.) + 300. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.protein > animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment{
+                animal.reproduction_stats.birth_timer = 10. + animal.reproduction_stats.offspring_investment * 3.;
+                animal.resources.energy -= 100. + (animal.reproduction_stats.offspring_investment * 20.);
+                animal.resources.protein -= animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment;
 
                 let offspring = animal.offspring(sim_params,species_list);
 
@@ -288,8 +288,8 @@ impl Animals{
     }
 
     fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize){
-        self.animals.index_mut(animal_id).resources.energy += (self.animals.index(other_animal_id).resources.energy+self.animals.index(other_animal_id).lean_mass) * (4.0 + 6.0 * self.animals.index(animal_id).combat_stats.carnivore_factor);
-        self.animals.index_mut(animal_id).resources.protein += self.animals.index(other_animal_id).lean_mass * (0.4 + 0.6 * self.animals.index(animal_id).combat_stats.carnivore_factor);
+        self.animals.index_mut(animal_id).resources.energy += (self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 10.) * (0.3 + 0.7 * self.animals.index(animal_id).combat_stats.carnivore_factor);
+        self.animals.index_mut(animal_id).resources.protein += (self.animals.index(other_animal_id).resources.protein + self.animals.index(other_animal_id).lean_mass * 10.) * (0.3 + 0.7 * self.animals.index(animal_id).combat_stats.carnivore_factor);
         self.animals.index_mut(other_animal_id).resources.energy = 0.;
     }
 

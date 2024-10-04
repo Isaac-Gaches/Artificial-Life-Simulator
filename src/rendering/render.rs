@@ -308,28 +308,28 @@ impl Renderer {
 
         let animal_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render animals"),
-            size: 28000,
+            size: 32768,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let plant_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 840000,
+            size: 1048576,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 5600,
+            size: 8192,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let rock_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render plants"),
-            size: 2520000,
+            size: 2097152,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
