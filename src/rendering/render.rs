@@ -86,6 +86,7 @@ pub struct Renderer {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
+    render_pipeline_circles: wgpu::RenderPipeline,
     camera_bind_group: wgpu::BindGroup,
     camera: Camera,
     egui: EguiRenderer,
@@ -280,6 +281,83 @@ impl Renderer {
             multiview: None,
         });
 
+        let render_pipeline_circles = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_circle",
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                    ],
+                },
+                    wgpu::VertexBufferLayout {
+                        array_stride: mem::size_of::<Instance>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &[
+                            wgpu::VertexAttribute {
+                                offset: 0,
+                                shader_location: 1,
+                                format: wgpu::VertexFormat::Float32x2,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                                shader_location: 2,
+                                format: wgpu::VertexFormat::Float32,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                                shader_location: 3,
+                                format: wgpu::VertexFormat::Float32,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                                shader_location: 4,
+                                format: wgpu::VertexFormat::Float32x3,
+                            },
+                        ],
+                    }],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_circle",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState{
+                        color: wgpu::BlendComponent{
+                            src_factor: wgpu::BlendFactor::SrcAlpha,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,},
+                        alpha: wgpu::BlendComponent::OVER
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
         let triangle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Triangle Buffer"),
             contents: bytemuck::cast_slice(TRIANGLE_VERTICES),
@@ -357,6 +435,7 @@ impl Renderer {
             config,
             size,
             render_pipeline,
+            render_pipeline_circles,
             camera_bind_group,
             camera,
             egui,
@@ -404,14 +483,19 @@ impl Renderer {
 
         //animals
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
         render_pass.set_vertex_buffer(0, self.buffers.triangle_vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.buffers.animal_buffer.slice(..));
-        render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
         render_pass.draw(0..3,0..self.buffers.animal_count);
 
-        //plants
+        //rocks
         render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.buffers.rock_buffer.slice(..));
         render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.rock_count);
+
+        //plants
+        render_pass.set_pipeline(&self.render_pipeline_circles);
         render_pass.set_vertex_buffer(1, self.buffers.plant_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.plant_count);
 
@@ -419,9 +503,6 @@ impl Renderer {
         render_pass.set_vertex_buffer(1, self.buffers.egg_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.egg_count);
 
-        //rocks
-        render_pass.set_vertex_buffer(1, self.buffers.rock_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.rock_count);
 
         drop(render_pass);
 

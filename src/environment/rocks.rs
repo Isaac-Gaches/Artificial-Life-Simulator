@@ -7,7 +7,7 @@ use crate::rendering::render::Instance;
 
 #[derive(Serialize, Deserialize,Clone)]
 pub struct RockMap{
-    rocks: Vec<u8>
+    pub rocks: Vec<u8>
 }
 impl RockMap{
     pub fn new()->Self{

@@ -1,5 +1,6 @@
 use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
+use std::sync::Arc;
 use std::time::SystemTime;
 use rand::Rng;
 use rayon::prelude::*;
@@ -10,6 +11,7 @@ use crate::environment::plants::Plants;
 use crate::rendering::render::Instance;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::collisions::{CELL_SIZE, CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
+use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
 
@@ -206,7 +208,7 @@ impl Animals{
         });
     }
 
-    pub fn update(&mut self, plants: &mut Plants, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList){
+    pub fn update(&mut self, plants: &mut Plants, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap){
         for i in 0..self.count(){
             let input = self.animals.index(i).senses.stimulus(&plants.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions);
 
@@ -225,11 +227,53 @@ impl Animals{
             }
         }
 
+        let arc = Arc::new(rock_map);
+
         self.animals.par_iter_mut().for_each(|animal|{
             let response = animal.brain.propagate();
 
             animal.body.position[0] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.cos() * animal.combat_stats.speed;
             animal.body.position[1] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.sin() * animal.combat_stats.speed;
+
+/*
+
+            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
+
+            if arc.rocks[i] > 0{
+
+            }*/
+
+
+           /* let start = animal.body.position[0];
+            animal.body.position[0] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.cos() * animal.combat_stats.speed;
+
+            'outer: for x in -1..=1{
+                for y in -1..=1{
+                    if x == 0 && y == 0 { continue;}
+                    let i = (animal.body.position[0] * DIV + x as f32) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV + y as f32) as usize;
+                    if arc.rocks[i] > 0{
+                        animal.body.position[0] = start;
+                        break 'outer;
+                    }
+                }
+            }
+
+            let start = animal.body.position[1];
+            animal.body.position[1] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.sin() * animal.combat_stats.speed;
+
+            'outer: for x in -1..=1{
+                for y in -1..=1{
+                    if x == 0 && y == 0 { continue;}
+                    let i = (animal.body.position[0] * DIV + x as f32) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV + y as f32) as usize;
+                    if arc.rocks[i] > 0{
+                        animal.body.position[1] = start;
+                        break 'outer;
+                    }
+                }
+            }*/
+
+
+
             animal.body.rotation += response.index(1) * 0.04 * animal.combat_stats.speed;
             animal.combat_stats.aggression = response.index(2).max(0.);
             animal.resources.energy -= animal.body.scale * 0.2 + response.index(0).max(0.) * animal.combat_stats.speed * 0.05 + response.index(1).abs() * animal.combat_stats.speed * 0.05 + 0.3 * animal.combat_stats.aggression.max(0.);

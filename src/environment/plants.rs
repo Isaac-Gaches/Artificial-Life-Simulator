@@ -47,7 +47,7 @@ impl Plants {
     }
 
     pub fn spawn(&mut self){
-        self.bodies.push(Instance::new([rand::thread_rng().gen_range(0.0..WORLD_WIDTH), rand::thread_rng().gen_range(0.0..WORLD_HEIGHT)], [0.0, 1.0, 0.0], PI/4.0,0.04));
+        self.bodies.push(Instance::new([rand::thread_rng().gen_range(0.0..WORLD_WIDTH), rand::thread_rng().gen_range(0.0..WORLD_HEIGHT)], [0.0, 1.0, 0.0], 0.0,0.06));
         self.plants.push(Plant{ eaten: false });
     }
 }
