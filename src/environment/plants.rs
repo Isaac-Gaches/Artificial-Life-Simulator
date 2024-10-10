@@ -4,6 +4,8 @@ use crate::rendering::render::Instance;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+use crate::environment::collisions::{CELLS_HEIGHT, DIV};
+use crate::environment::rocks::RockMap;
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Plant{
@@ -31,7 +33,7 @@ impl Plants {
 
     pub fn handle_collision(&mut self,plant_id:usize)->(f32,f32){
         self.plants.index_mut(plant_id).eaten = true;
-        (65.,0.1)
+        (80.,0.2)
     }
 
     pub fn count(&self)->usize{
@@ -46,8 +48,28 @@ impl Plants {
         });
     }
 
-    pub fn spawn(&mut self){
-        self.bodies.push(Instance::new([rand::thread_rng().gen_range(0.0..WORLD_WIDTH), rand::thread_rng().gen_range(0.0..WORLD_HEIGHT)], [0.0, 1.0, 0.0], 0.0,0.06));
-        self.plants.push(Plant{ eaten: false });
+    pub fn spawn(&mut self,rock_map: &RockMap){
+        loop{
+            let x = rand::thread_rng().gen_range(0.0..WORLD_WIDTH);
+            let y = rand::thread_rng().gen_range(0.0..WORLD_HEIGHT);
+
+            let mut spawn = true;
+
+            'outer: for m in -1..=1{
+                for n in -1..=1{
+                    let i = (x * DIV + m as f32) as usize * CELLS_HEIGHT + (y * DIV + n as f32) as usize;
+                    if rock_map.rocks[i] > 0 {
+                        spawn = false;
+                        break 'outer;
+                    }
+                }
+            }
+
+            if spawn{
+                self.bodies.push(Instance::new([x, y], [0.0, 1.0, 0.0], 0.0, 0.06));
+                self.plants.push(Plant { eaten: false });
+                break;
+            }
+        }
     }
 }

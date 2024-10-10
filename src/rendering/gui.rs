@@ -186,17 +186,21 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 if let Some(animal) = animal {
                     ui.horizontal(|ui| {
-                        ui.label("Angle to plant");
+                        ui.label("Plant angle");
                         ui.separator();
-                        ui.label("Dist to plant");
+                        ui.label("Plant dist");
                         ui.separator();
-                        ui.label("Angle to animal");
+                        ui.label("Animal angle");
                         ui.separator();
-                        ui.label("Dist to animal");
+                        ui.label("Animal dist");
                         ui.separator();
                         ui.label("Same species");
                         ui.separator();
                         ui.label("Herbivore");
+                        ui.separator();
+                        ui.label("Rock left");
+                        ui.separator();
+                        ui.label("Rock right");
                     });
                     Frame::canvas(ui.style()).show(ui, |ui| {
                         let (response, painter) = ui.allocate_painter(Vec2::new(ui.available_width(), ui.available_width() * 0.5), Sense::hover());

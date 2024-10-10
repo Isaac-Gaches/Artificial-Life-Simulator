@@ -39,7 +39,7 @@ impl Eggs {
     }
 
     pub fn spawn(&mut self,pos: [f32;2],animal: Animal){
-        self.bodies.push(Instance::new(pos, [0.3, 0.3, 0.3], 0.0,0.04));
+        self.bodies.push(Instance::new(pos, [0.3, 0.3, 0.3], 0.0,0.08));
         self.eggs.push(Egg { time: 0.0, animal});
     }
 }

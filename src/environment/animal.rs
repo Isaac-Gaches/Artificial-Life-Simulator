@@ -97,7 +97,7 @@ impl Resources{
 }
 
 impl SensoryInput{
-    fn stimulus(&self, plants: &[Instance], body: &Instance, animals: &[Animal],animal: &Animal,collisions: &Collisions) -> Vec<f32>{
+    fn stimulus(&self, plants: &[Instance], body: &Instance, animals: &[Animal],animal: &Animal,collisions: &Collisions, rock_map: &RockMap) -> Vec<f32>{
         let mut input = Vec::new();
 
         let mut closest = f32::MAX;
@@ -160,6 +160,35 @@ impl SensoryInput{
         input.push(carn);
         input.push(same_species);
 
+
+        let mut ray1 = animal.body.position;
+        let mut dist1 = 0.;
+
+        let mut ray2 = animal.body.position;
+        let mut dist2 = 0.;
+
+        for i in 0..30{
+            if rock_map.rocks[(ray1[0] * DIV) as usize * CELLS_HEIGHT + (ray1[1] * DIV) as usize] > 0{
+                dist1 = i as f32 * CELL_SIZE * 0.2;
+                break
+            }
+
+            ray1[0] += (animal.body.rotation - PI*0.125).cos() * CELL_SIZE * 0.2;
+            ray1[1] += (animal.body.rotation - PI*0.125).sin() * CELL_SIZE * 0.2;
+        }
+        for i in 0..30{
+            if rock_map.rocks[(ray2[0] * DIV) as usize * CELLS_HEIGHT + (ray2[1] * DIV) as usize] > 0{
+                dist2 = i as f32 * CELL_SIZE * 0.2;
+                break
+            }
+
+            ray2[0] += (animal.body.rotation + PI*0.125).cos() * CELL_SIZE * 0.2;
+            ray2[1] += (animal.body.rotation + PI*0.125).sin() * CELL_SIZE * 0.2;
+        }
+
+        input.push((6.0*CELL_SIZE-dist1)/(6.0*CELL_SIZE));
+        input.push((6.0*CELL_SIZE-dist2)/(6.0*CELL_SIZE));
+
         input
     }
 }
@@ -178,7 +207,7 @@ impl Animals{
         let mut rng = rand::thread_rng();
 
         let senses = SensoryInput{ };
-        let brain = Network::random(&[6,12,3]);
+        let brain = Network::random(&[8,16,3]);
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(1.0..10.)};
         let body = Instance::new([rng.gen_range(0.0..WORLD_WIDTH), rng.gen_range(0.0..WORLD_HEIGHT)], [1.,1.,1.], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let resources = Resources{ energy: 300.0, protein: 0.0 };
@@ -210,7 +239,7 @@ impl Animals{
 
     pub fn update(&mut self, plants: &mut Plants, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap){
         for i in 0..self.count(){
-            let input = self.animals.index(i).senses.stimulus(&plants.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions);
+            let input = self.animals.index(i).senses.stimulus(&plants.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions,rock_map);
 
             let animal = self.animals.index_mut(i);
 
@@ -232,19 +261,7 @@ impl Animals{
         self.animals.par_iter_mut().for_each(|animal|{
             let response = animal.brain.propagate();
 
-            animal.body.position[0] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.cos() * animal.combat_stats.speed;
-            animal.body.position[1] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.sin() * animal.combat_stats.speed;
-
-/*
-
-            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
-
-            if arc.rocks[i] > 0{
-
-            }*/
-
-
-           /* let start = animal.body.position[0];
+            let start = animal.body.position[0];
             animal.body.position[0] += response.index(0).max(0.0) * 0.006 * animal.body.rotation.cos() * animal.combat_stats.speed;
 
             'outer: for x in -1..=1{
@@ -270,9 +287,7 @@ impl Animals{
                         break 'outer;
                     }
                 }
-            }*/
-
-
+            }
 
             animal.body.rotation += response.index(1) * 0.04 * animal.combat_stats.speed;
             animal.combat_stats.aggression = response.index(2).max(0.);

@@ -18,12 +18,12 @@ impl RockMap{
     pub fn randomise(&mut self){
         let seed = thread_rng().gen_range(-100000..100000);
 
-        let noise = NoiseBuilder::fbm_2d_offset(seed as f32,CELLS_WIDTH,seed as f32, CELLS_HEIGHT).with_seed(seed).with_freq(0.04).generate_scaled(0.0, 1.0);
+        let noise = NoiseBuilder::fbm_2d_offset(seed as f32,CELLS_WIDTH,seed as f32, CELLS_HEIGHT).with_seed(seed).with_freq(0.03).generate_scaled(0.0, 1.0);
 
         for i in 0..self.count() as usize{
             let x = i % CELLS_WIDTH;
             let y = i / CELLS_HEIGHT;
-            if x == 0 || x == CELLS_WIDTH - 1 || y == 0 || y == CELLS_HEIGHT - 1 || (*noise.index(i) > 0.5 && *noise.index(i) < 0.6){
+            if x == 0 || x == CELLS_WIDTH - 1 || y == 0 || y == CELLS_HEIGHT - 1 || (*noise.index(i) > 0.51 && *noise.index(i) < 0.59){
                 self.rocks[i] =1 ;
             }
         }
@@ -31,9 +31,9 @@ impl RockMap{
     pub fn instances(&self)->Vec<Instance>{
         self.rocks.iter().enumerate().filter_map(|(i,rock)|{
             if *rock == 0 { return None }
-            let x = (i % CELLS_WIDTH) as f32 * CELL_SIZE;
-            let y = (i / CELLS_HEIGHT) as f32 * CELL_SIZE;
-            Some(Instance::new([x, y], [0.3, 0.3, 0.3], 0.0, CELL_SIZE))
+            let x = (i / CELLS_HEIGHT) as f32 * CELL_SIZE;
+            let y = (i % CELLS_HEIGHT) as f32 * CELL_SIZE;
+            Some(Instance::new([x + 0.5 * CELL_SIZE, y + 0.5 * CELL_SIZE], [0.3, 0.3, 0.3], 0.0, CELL_SIZE))
         }).collect()
     }
     pub fn count(&self) -> u32{

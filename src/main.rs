@@ -16,6 +16,7 @@ use winit::{
 use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::System;
+use winit::dpi::{PhysicalSize, Size};
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::rocks::RockMap;
 use crate::utilities::input_manager::Inputs;
@@ -30,7 +31,7 @@ const WORLD_HEIGHT: f32 = 80.0;
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
-    let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
+    let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
     let mut renderer = Renderer::new(window).await;
 
     let mut graph_timer = SystemTime::now();
@@ -101,7 +102,7 @@ pub async fn run() {
 
                         if step%60==0{
                             for _ in 0..sim_params.plant_spawn_rate{
-                                plants.spawn();
+                                plants.spawn(&rocks);
                             }
                             for _ in 0..1{
                                 animals.spawn();
