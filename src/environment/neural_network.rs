@@ -44,6 +44,12 @@ impl Network{
     pub fn compare(&self, other: &Network) -> f32{
         self.layers.iter().zip(other.layers.iter()).map(|layer| { layer.0.compare(layer.1) } ).sum::<f32>()
     }
+    pub fn zero(layers: &[usize])->Self{
+        let mut layers = layers.to_vec();
+        layers.insert(0,0);
+        let layers = layers.windows(2).map(|layers| { Layer::zero(layers[0], layers[1]) }).collect();
+        Self { layers }
+    }
 }
 impl Layer{
     fn activations(&self)->Vec<f32>{
@@ -54,6 +60,10 @@ impl Layer{
     }
     fn random(input_size: usize, output_size: usize) -> Self{
         let neurons = (0..output_size).map(|_| Neuron::random(input_size)).collect();
+        Self { neurons }
+    }
+    fn zero(input_size: usize, output_size: usize) -> Self{
+        let neurons = (0..output_size).map(|_| Neuron::zero(input_size)).collect();
         Self { neurons }
     }
     fn mutate(&mut self,strength: f32){
@@ -78,13 +88,17 @@ impl Neuron{
         let weights = (0..input_size).map(|_| rng.gen_range(-1.0..=1.0)).collect();
         Self { activation: 0.0, weights, bias: decay }
     }
+    fn zero(input_size: usize) -> Self {
+        let weights = vec![0.;input_size];
+        Self { activation: 0.0, weights, bias: 0.0 }
+    }
     fn mutate(&mut self,strength: f32){
         let mut rng = rand::thread_rng();
         self.weights.iter_mut().for_each(|weight| if rng.gen_bool(strength as f64){
-            *weight += rng.gen_range(-strength*0.1..=strength * 0.1);
+            *weight += rng.gen_range(-strength..=strength);
         });
         if rng.gen_bool(strength as f64){
-            self.bias += rng.gen_range(-strength*0.1..=strength * 0.1);
+            self.bias += rng.gen_range(-strength..=strength);
         }
     }
     fn compare(&self, other: &Neuron) -> f32{

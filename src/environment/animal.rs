@@ -186,8 +186,8 @@ impl SensoryInput{
             ray2[1] += (animal.body.rotation + PI*0.125).sin() * CELL_SIZE * 0.2;
         }
 
-        input.push((6.0*CELL_SIZE-dist1)/(6.0*CELL_SIZE));
-        input.push((6.0*CELL_SIZE-dist2)/(6.0*CELL_SIZE));
+        input.push((dist1)/(6.0*CELL_SIZE));
+        input.push((dist2)/(6.0*CELL_SIZE));
 
         input
     }
@@ -207,7 +207,7 @@ impl Animals{
         let mut rng = rand::thread_rng();
 
         let senses = SensoryInput{ };
-        let brain = Network::random(&[8,16,3]);
+        let mut brain = Network::random(&[8,16,3]);
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(1.0..10.)};
         let body = Instance::new([rng.gen_range(0.0..WORLD_WIDTH), rng.gen_range(0.0..WORLD_HEIGHT)], [1.,1.,1.], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let resources = Resources{ energy: 300.0, protein: 0.0 };

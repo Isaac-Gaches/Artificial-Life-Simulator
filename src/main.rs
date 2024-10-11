@@ -26,8 +26,8 @@ fn main() {
     pollster::block_on(run());
 }
 
-const WORLD_WIDTH: f32 = 80.0;
-const WORLD_HEIGHT: f32 = 80.0;
+const WORLD_WIDTH: f32 = 160.0;
+const WORLD_HEIGHT: f32 = 160.0;
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
