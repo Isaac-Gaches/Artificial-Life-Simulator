@@ -1,11 +1,11 @@
 use std::f32::consts::PI;
 use std::ops::{Index, IndexMut};
-use crate::rendering::render::Instance;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::collisions::{CELLS_HEIGHT, DIV};
 use crate::environment::rocks::RockMap;
+use crate::rendering::instance::Instance;
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Plant{
@@ -33,7 +33,7 @@ impl Plants {
 
     pub fn handle_collision(&mut self,plant_id:usize)->(f32,f32){
         self.plants.index_mut(plant_id).eaten = true;
-        (120.,0.2)
+        (150.,0.2)
     }
 
     pub fn count(&self)->usize{

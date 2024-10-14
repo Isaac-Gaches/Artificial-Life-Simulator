@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 use serde::{Deserialize, Serialize};
-use crate::rendering::render::Instance;
 use crate::environment::animal::{Animal, Animals};
+use crate::rendering::instance::Instance;
 
 #[derive(Serialize,Deserialize,Clone)]
 pub struct Egg{

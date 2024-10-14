@@ -12,7 +12,7 @@ impl Default for SimParams{
     fn default() -> Self {
         Self{
             steps_per_frame: 1,
-            plant_spawn_rate: 20,
+            plant_spawn_rate: 10,
             highlighted_species: -1,
             brain_mutation_rate: 15.0,
             physical_mutation_rate: 10.0,

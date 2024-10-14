@@ -33,7 +33,7 @@ impl Default for Stats{
             cpu_usages: vec![],
             tot_cpu_usage: 0.0,
             step: 0,
-            step_time: 2,
+            step_time: 1,
             diet_dist: vec![0.;11],
         }
     }

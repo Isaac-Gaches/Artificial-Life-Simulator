@@ -2,8 +2,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
 use crate::environment::plants::Plants;
-use crate::rendering::render::Instance;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+use crate::rendering::instance::Instance;
 
 pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize + 2;
 pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize + 2;

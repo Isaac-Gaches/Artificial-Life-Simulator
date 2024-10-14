@@ -15,25 +15,8 @@ use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::rocks::RockMap;
+use crate::rendering::instance::Instance;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable,Serialize,Deserialize)]
-pub struct Instance{ //28 bytes
-    pub position: [f32;2],
-    pub rotation: f32,
-    pub scale: f32,
-    pub color: [f32; 3],
-}
-impl Instance {
-    pub fn new(position: [f32;2],color: [f32; 3],rotation:f32,scale: f32)->Self{
-        Self{
-            position,
-            color,
-            rotation,
-            scale,
-        }
-    }
-}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

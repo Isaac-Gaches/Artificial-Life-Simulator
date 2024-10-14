@@ -26,8 +26,8 @@ fn main() {
     pollster::block_on(run());
 }
 
-const WORLD_WIDTH: f32 = 160.0;
-const WORLD_HEIGHT: f32 = 160.0;
+const WORLD_WIDTH: f32 = 80.0;
+const WORLD_HEIGHT: f32 = 80.0;
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
@@ -40,7 +40,7 @@ pub async fn run() {
     let mut frames = 0;
     let mut system = System::default();
 
-/*    let mut step = 0;
+    let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
     let mut stats = utilities::statistics::Stats::default();
@@ -49,9 +49,9 @@ pub async fn run() {
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
     let mut rocks = RockMap::new();
-    rocks.randomise();*/
+    rocks.randomise();
 
-    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+  //  let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
