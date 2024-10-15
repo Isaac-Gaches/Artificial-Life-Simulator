@@ -22,9 +22,9 @@ impl Instance {
         let kg = (3.+hue*6.)%6.;
         let kb = (1.+hue*6.)%6.;
 
-        let r = 1. - kr.min(4.-kr).min(1.).max(0.);
-        let g = 1. - kr.min(4.-kg).min(1.).max(0.);
-        let b = 1. - kr.min(4.-kb).min(1.).max(0.);
+        let r = 1. - kr.min(4.-kr).clamp(0.,1.0);
+        let g = 1. - kr.min(4.-kg).clamp(0.,1.0);
+        let b = 1. - kr.min(4.-kb).clamp(0.,1.0);
 
         self.color = [r,g,b];
     }

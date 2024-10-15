@@ -53,7 +53,7 @@ fn vs_circle(
     instance: InstanceInput,
 ) -> CircleVertexOutput {
     var out: CircleVertexOutput;
-    out.vert_position = vertex.position;
+    out.vert_position = vertex.position - vec3<f32>(0.5);
     out.color = instance.color;
     var cs: f32 = cos(instance.rotation);
     var sn: f32 = sin(instance.rotation);
@@ -64,7 +64,7 @@ fn vs_circle(
 
 @fragment
 fn fs_circle(in: CircleVertexOutput) -> @location(0) vec4<f32> {
-    if (in.vert_position.x - 0.5) * (in.vert_position.x - 0.5) + (in.vert_position.y - 0.5) * (in.vert_position.y - 0.5) > 0.25{
+    if (in.vert_position.x) * (in.vert_position.x) + (in.vert_position.y) * (in.vert_position.y) > 0.25{
         return vec4<f32>(0.0,0.,0.,0.);
     }
     return vec4<f32>(in.color, 1.0);

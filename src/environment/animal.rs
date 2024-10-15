@@ -1,7 +1,6 @@
 use std::f32::consts::{PI, TAU};
 use std::ops::{Index, IndexMut};
 use std::sync::Arc;
-use std::time::SystemTime;
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -218,7 +217,7 @@ impl Animals{
             plant_vision: rng.gen_range(0.0..12.0),
             rock_vision: rng.gen_range(0.0..12.0),
         };
-        let mut brain = Network::random(&[8,16,3]);
+        let brain = Network::random(&[8,16,3]);
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
         let mut body = Instance::new([rng.gen_range(0.0..WORLD_WIDTH), rng.gen_range(0.0..WORLD_HEIGHT)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let hue = rng.gen_range(0.0..=1.0);

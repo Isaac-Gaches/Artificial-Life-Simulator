@@ -34,7 +34,7 @@ impl RockMap{
             if *rock == 0 { return None }
             let x = (i / CELLS_HEIGHT) as f32 * CELL_SIZE;
             let y = (i % CELLS_HEIGHT) as f32 * CELL_SIZE;
-            Some(Instance::new([x + 0.5 * CELL_SIZE, y + 0.5 * CELL_SIZE], [0.3, 0.3, 0.3], 0.0, CELL_SIZE))
+            Some(Instance::new([x , y], [0.3, 0.3, 0.3], 0.0, CELL_SIZE))
         }).collect()
     }
     pub fn count(&self) -> u32{

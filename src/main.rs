@@ -16,7 +16,7 @@ use winit::{
 use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::System;
-use winit::dpi::{PhysicalSize, Size};
+use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::rocks::RockMap;
 use crate::utilities::input_manager::Inputs;
@@ -51,7 +51,7 @@ pub async fn run() {
     let mut rocks = RockMap::new();
     rocks.randomise();
 
-  //  let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+   // let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {

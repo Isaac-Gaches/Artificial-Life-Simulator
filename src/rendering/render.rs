@@ -1,7 +1,6 @@
 use std::{iter, mem};
 use std::sync::Arc;
 use egui_wgpu::{ScreenDescriptor};
-use serde::{Deserialize, Serialize};
 use wgpu::{BindingType, Buffer, Queue, Surface, Device, TextureViewDescriptor};
 use wgpu::util::DeviceExt;
 use winit::event::WindowEvent;
@@ -15,8 +14,8 @@ use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::rocks::RockMap;
+use crate::rendering::camera::Camera;
 use crate::rendering::instance::Instance;
-
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -25,41 +24,33 @@ struct Vertex {
 }
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.0],
+        position: [0.0, 0.1],
     },
     Vertex {
-        position: [0.8, 0.3],
+        position: [1.0, 0.5],
     },
     Vertex {
-        position: [0.0, 0.6],
+        position: [0.0, 0.9],
     },
 ];
 
 const QUAD_VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.0],
+        position: [0., 0.],
     },
     Vertex {
-        position: [1.0, 0.0],
+        position: [1., 0.],
     },
     Vertex {
-        position: [0.0, 1.0],
+        position: [0., 1.],
     },
     Vertex {
-        position: [1.0, 1.0],
+        position: [1., 1.],
     },
 ];
 
 const QUAD_INDICES: &[u16] = &[0, 1, 2, 2, 1, 3];
 const NUM_INDICES: u32 = 6;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Camera {
-    position: [f32;2],
-    zoom: f32,
-    ratio: f32,
-}
 
 pub struct Renderer {
     device: Device,
@@ -535,12 +526,9 @@ impl Renderer {
         self.buffers.animal_count = animals.count() as u32;
         self.buffers.plant_count = plants.count() as u32;
         self.buffers.egg_count = eggs.count() as u32;
-        self.buffers.rock_count = rocks.count() as u32;
+        self.buffers.rock_count = rocks.count();
 
-        self.camera.position[1] += if inputs.up {0.1} else if inputs.down {-0.1} else {0.0};
-        self.camera.position[0] += if inputs.right {0.1} else if inputs.left {-0.1} else {0.0};
-        self.camera.zoom += if inputs.plus {0.002} else if inputs.minus {-0.002} else {0.0};
-        self.camera.ratio = self.size.height as f32/self.size.width as f32;
+        self.camera.update(inputs,&self.size);
 
         self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
         self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
