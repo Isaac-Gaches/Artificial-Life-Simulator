@@ -19,6 +19,7 @@ use sysinfo::System;
 use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::rocks::RockMap;
+use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
 use crate::utilities::save_system::SaveSystem;
 
@@ -39,8 +40,13 @@ pub async fn run() {
     let mut inputs = Inputs::default();
     let mut frames = 0;
     let mut system = System::default();
+    let mut camera = Camera{
+        position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
+        zoom: 0.05,
+        ratio: 1.0,
+    };
 
-    let mut step = 0;
+/*    let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
     let mut stats = utilities::statistics::Stats::default();
@@ -49,9 +55,9 @@ pub async fn run() {
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
     let mut rocks = RockMap::new();
-    rocks.randomise();
+    rocks.randomise();*/
 
-   // let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -85,6 +91,30 @@ pub async fn run() {
                         }
                     }
                 }
+                WindowEvent::MouseInput { button,state,..} =>{
+                    match button {
+                        MouseButton::Left =>{
+                            if state.is_pressed(){
+                                inputs.left_mouse = true;
+                            }
+                            else{
+                                inputs.left_mouse = false;
+                            }
+                        },
+                        MouseButton::Right =>{
+                            if state.is_pressed(){
+                                inputs.right_mouse = true;
+                            }
+                            else{
+                                inputs.right_mouse = false;
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+                WindowEvent::CursorMoved {position,..} =>{
+                    inputs.mouse_pos = [(position.x as f32/renderer.window_width() - 0.5)*2.0,((renderer.window_height() - position.y as f32)/renderer.window_height() - 0.5)*2.0];
+                }
                 WindowEvent::Resized(physical_size) => {
                     renderer.resize(Some(*physical_size));
                 }
@@ -109,29 +139,29 @@ pub async fn run() {
                             }
                         }
 
-                      //  let now = SystemTime::now();
                         if step%6 == 0{
                             animals.kill();
                             plants.kill();
                             collisions.update_animal_grid(animals.instances().as_slice());
                             collisions.update_plant_grid(plants.instances());
                         }
-                      //  println!("grid: {}",now.elapsed().unwrap().as_micros());
 
-                      //  let now = SystemTime::now();
+                        if inputs.left_mouse{
+                            rocks.set(1,camera.screen_to_world_pos(inputs.mouse_pos),1);
+                        }
+                        else if inputs.right_mouse{
+                            rocks.set(0,camera.screen_to_world_pos(inputs.mouse_pos),1);
+                        }
+
                         collisions.handle_collisions(&mut animals,&mut plants);
-                       // println!("col: {}",now.elapsed().unwrap().as_micros());
-
                         eggs.update(&mut animals);
-
-                        //let now = SystemTime::now();
                         animals.update(&mut plants,&mut eggs,&mut sim_params,&collisions,&mut species_list,&rocks);
-                       // println!("up: {}",now.elapsed().unwrap().as_micros());
 
                         step+=1;
                     }
 
-                    renderer.update(&animals,&plants,&eggs,&inputs,&rocks);
+                    camera.update(&inputs,&renderer.size());
+                    renderer.update(&animals,&plants,&eggs,&inputs,&rocks,camera);
 
                     let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 

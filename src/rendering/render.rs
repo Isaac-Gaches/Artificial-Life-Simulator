@@ -3,6 +3,7 @@ use std::sync::Arc;
 use egui_wgpu::{ScreenDescriptor};
 use wgpu::{BindingType, Buffer, Queue, Surface, Device, TextureViewDescriptor};
 use wgpu::util::DeviceExt;
+use winit::dpi::{PhysicalSize, Size};
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::{Animal, Animals};
@@ -62,7 +63,6 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     render_pipeline_circles: wgpu::RenderPipeline,
     camera_bind_group: wgpu::BindGroup,
-    camera: Camera,
     egui: EguiRenderer,
     buffers: Buffers
 }
@@ -137,12 +137,6 @@ impl Renderer {
             view_formats: vec![],
         };
         surface.configure(&device, &config);
-
-        let camera = Camera{
-            position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
-            zoom: 0.05,
-            ratio: 1.0,
-        };
 
         let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Uniform Buffer"),
@@ -411,7 +405,6 @@ impl Renderer {
             render_pipeline,
             render_pipeline_circles,
             camera_bind_group,
-            camera,
             egui,
             buffers
         }
@@ -522,15 +515,13 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,rocks: &RockMap){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,rocks: &RockMap,camera: Camera){
         self.buffers.animal_count = animals.count() as u32;
         self.buffers.plant_count = plants.count() as u32;
         self.buffers.egg_count = eggs.count() as u32;
         self.buffers.rock_count = rocks.count();
 
-        self.camera.update(inputs,&self.size);
-
-        self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[self.camera]));
+        self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[camera]));
         self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
@@ -543,5 +534,15 @@ impl Renderer {
 
     pub fn egui_handle_input(&mut self,event: &WindowEvent){
         self.egui.handle_input(&self.window, event);
+    }
+
+    pub fn window_height(&self) -> f32{
+        self.size.height as f32
+    }
+    pub fn window_width(&self) -> f32{
+        self.size.width as f32
+    }
+    pub fn size(&self) -> PhysicalSize<u32>{
+        self.size
     }
 }
