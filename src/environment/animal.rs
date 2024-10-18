@@ -112,88 +112,107 @@ impl SensoryInput{
         let x = (body.position[0] * DIV) as usize;
         let y = (body.position[1] * DIV) as usize;
 
-        for i in 0..self.plant_vision as usize{
-            for j in 0..self.plant_vision as usize{
-                let cell = collisions.plants_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH-1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT-1));
-                for id in &cell.object_ids{
-                    let plant = plants.index(*id);
+        if self.plant_vision > 0.1 {
+            for i in 0..self.plant_vision as usize {
+                for j in 0..self.plant_vision as usize {
+                    let cell = collisions.plants_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
+                    for id in &cell.object_ids {
+                        let plant = plants.index(*id);
 
-                    let relative_pos_x = plant.position[0] - body.position[0];
-                    let relative_pos_y = plant.position[1] - body.position[1];
-                    let dist = relative_pos_x.abs() + relative_pos_y.abs();
+                        let relative_pos_x = plant.position[0] - body.position[0];
+                        let relative_pos_y = plant.position[1] - body.position[1];
+                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
 
-                    if dist < closest{
-                        closest = dist;
-                        angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+                        if dist < closest {
+                            closest = dist;
+                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+                        }
                     }
                 }
             }
+            //always finds angle on rhs, this converts it into the acute angle if it's not already
+            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
+            input.push(angle / PI);
+            input.push(((self.plant_vision * CELL_SIZE) - closest).max(0.0) / (self.plant_vision * CELL_SIZE));
         }
-        //always finds angle on rhs, this converts it into the acute angle if it's not already
-        angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-        input.push(angle/PI);
-        input.push(((self.plant_vision*CELL_SIZE)-closest).max(0.0)/(self.plant_vision*CELL_SIZE));
+        else{
+            input.push(0.);
+            input.push(0.);
+        }
 
-        let mut carn:f32 = 0.;
-        let mut same_species = 0.;
+        if self.animal_vision > 0.1 {
+            let mut carn: f32 = 0.;
+            let mut same_species = 0.;
 
-        closest = f32::MAX;
-        angle = 0.;
+            closest = f32::MAX;
+            angle = 0.;
 
-        for i in 0..self.animal_vision as usize{
-            for j in 0..self.animal_vision as usize{
-                let cell = collisions.animals_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH-1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT-1));
-                for id in &cell.object_ids{
-                    let other = animals.index(*id);
+            for i in 0..self.animal_vision as usize {
+                for j in 0..self.animal_vision as usize {
+                    let cell = collisions.animals_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
+                    for id in &cell.object_ids {
+                        let other = animals.index(*id);
 
-                    let relative_pos_x = other.body.position[0] - body.position[0];
-                    let relative_pos_y = other.body.position[1] - body.position[1];
-                    let dist = relative_pos_x.abs() + relative_pos_y.abs();
+                        let relative_pos_x = other.body.position[0] - body.position[0];
+                        let relative_pos_y = other.body.position[1] - body.position[1];
+                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
 
-                    if dist < closest && dist > 0.{
-                        closest = dist;
-                        angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
-                        carn = other.combat_stats.carnivore_factor;
-                        same_species = if animal.species_id == other.species_id { -1. } else {1.0};
+                        if dist < closest && dist > 0. {
+                            closest = dist;
+                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+                            carn = other.combat_stats.carnivore_factor;
+                            same_species = if animal.species_id == other.species_id { -1. } else { 1.0 };
+                        }
                     }
                 }
             }
+
+            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
+            input.push(angle / PI);
+            input.push(((self.animal_vision * CELL_SIZE) - closest).max(0.0) / (self.animal_vision * CELL_SIZE));
+            input.push(carn);
+            input.push(same_species);
+        }
+        else{
+            input.push(0.);
+            input.push(0.);
+            input.push(0.);
+            input.push(0.);
         }
 
-        angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-        input.push(angle/PI);
-        input.push(((self.animal_vision*CELL_SIZE)-closest).max(0.0)/(self.animal_vision*CELL_SIZE));
-        input.push(carn);
-        input.push(same_species);
+        if self.rock_vision > 0.1 {
+            let mut ray1 = animal.body.position;
+            let mut dist1 = 0.;
 
+            let mut ray2 = animal.body.position;
+            let mut dist2 = 0.;
 
-        let mut ray1 = animal.body.position;
-        let mut dist1 = 0.;
+            for i in 0..(self.rock_vision * 5.) as usize {
+                if rock_map.rocks[(ray1[0] * DIV) as usize * CELLS_HEIGHT + (ray1[1] * DIV) as usize] > 0 {
+                    dist1 = i as f32 * CELL_SIZE * 0.2;
+                    break
+                }
 
-        let mut ray2 = animal.body.position;
-        let mut dist2 = 0.;
+                ray1[0] += (animal.body.rotation - PI * 0.125).cos() * CELL_SIZE * 0.2;
+                ray1[1] += (animal.body.rotation - PI * 0.125).sin() * CELL_SIZE * 0.2;
+            }
+            for i in 0..(self.rock_vision * 5.) as usize {
+                if rock_map.rocks[(ray2[0] * DIV) as usize * CELLS_HEIGHT + (ray2[1] * DIV) as usize] > 0 {
+                    dist2 = i as f32 * CELL_SIZE * 0.2;
+                    break
+                }
 
-        for i in 0..(self.rock_vision*5.) as usize{
-            if rock_map.rocks[(ray1[0] * DIV) as usize * CELLS_HEIGHT + (ray1[1] * DIV) as usize] > 0{
-                dist1 = i as f32 * CELL_SIZE * 0.2;
-                break
+                ray2[0] += (animal.body.rotation + PI * 0.125).cos() * CELL_SIZE * 0.2;
+                ray2[1] += (animal.body.rotation + PI * 0.125).sin() * CELL_SIZE * 0.2;
             }
 
-            ray1[0] += (animal.body.rotation - PI*0.125).cos() * CELL_SIZE * 0.2;
-            ray1[1] += (animal.body.rotation - PI*0.125).sin() * CELL_SIZE * 0.2;
+            input.push((dist1) / (self.rock_vision * CELL_SIZE));
+            input.push((dist2) / (self.rock_vision * CELL_SIZE));
         }
-        for i in 0..(self.rock_vision*5.) as usize{
-            if rock_map.rocks[(ray2[0] * DIV) as usize * CELLS_HEIGHT + (ray2[1] * DIV) as usize] > 0{
-                dist2 = i as f32 * CELL_SIZE * 0.2;
-                break
-            }
-
-            ray2[0] += (animal.body.rotation + PI*0.125).cos() * CELL_SIZE * 0.2;
-            ray2[1] += (animal.body.rotation + PI*0.125).sin() * CELL_SIZE * 0.2;
+        else {
+            input.push(0.);
+            input.push(0.);
         }
-
-        input.push((dist1)/(self.rock_vision*CELL_SIZE));
-        input.push((dist2)/(self.rock_vision*CELL_SIZE));
 
         input
     }

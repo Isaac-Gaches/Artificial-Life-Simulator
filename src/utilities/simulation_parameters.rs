@@ -7,6 +7,8 @@ pub struct SimParams{
     pub highlighted_species: i32,
     pub brain_mutation_rate: f32,
     pub physical_mutation_rate: f32,
+    pub pen_size: i32,
+    pub build_mode: bool
 }
 impl Default for SimParams{
     fn default() -> Self {
@@ -16,6 +18,8 @@ impl Default for SimParams{
             highlighted_species: -1,
             brain_mutation_rate: 15.0,
             physical_mutation_rate: 10.0,
+            pen_size: 0,
+            build_mode: false,
         }
     }
 }

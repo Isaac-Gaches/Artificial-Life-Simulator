@@ -71,4 +71,19 @@ impl Plants {
             }
         }
     }
+
+    pub fn remove_plants_in_walls(&mut self,rock_map: &RockMap){
+        (0..self.count()).rev().for_each(|i|{
+            let plant = &self.bodies[i];
+            'outer: for m in -1..=1{
+                for n in -1..=1{
+                    let r = (plant.position[0] * DIV + m as f32) as usize * CELLS_HEIGHT + (plant.position[1] * DIV + n as f32) as usize;
+                    if rock_map.rocks[r] > 0 {
+                        self.remove(i);
+                        break 'outer;
+                    }
+                }
+            }
+        });
+    }
 }

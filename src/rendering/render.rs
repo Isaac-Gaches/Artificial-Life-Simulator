@@ -1,9 +1,10 @@
 use std::{iter, mem};
 use std::sync::Arc;
+use egui::Context;
 use egui_wgpu::{ScreenDescriptor};
 use wgpu::{BindingType, Buffer, Queue, Surface, Device, TextureViewDescriptor};
 use wgpu::util::DeviceExt;
-use winit::dpi::{PhysicalSize, Size};
+use winit::dpi::{PhysicalSize};
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::{Animal, Animals};
@@ -13,7 +14,6 @@ use crate::utilities::input_manager::Inputs;
 use crate::environment::plants::Plants;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
-use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::rendering::instance::Instance;
@@ -59,7 +59,7 @@ pub struct Renderer {
     window: Arc<Window>,
     surface: Surface<'static>,
     config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
+    size: PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
     render_pipeline_circles: wgpu::RenderPipeline,
     camera_bind_group: wgpu::BindGroup,
@@ -544,5 +544,8 @@ impl Renderer {
     }
     pub fn size(&self) -> PhysicalSize<u32>{
         self.size
+    }
+    pub fn egui_context(&self) -> &Context{
+        &self.egui.context
     }
 }

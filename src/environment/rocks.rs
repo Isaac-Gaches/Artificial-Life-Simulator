@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use simdnoise::NoiseBuilder;
 use crate::environment::collisions::{CELL_SIZE, CELLS_HEIGHT, CELLS_WIDTH, DIV};
 use crate::rendering::instance::Instance;
+use crate::WORLD_WIDTH;
 
 #[derive(Serialize, Deserialize,Clone)]
 pub struct RockMap{
@@ -41,18 +42,21 @@ impl RockMap{
         self.rocks.len() as u32
     }
 
-    pub fn set(&mut self,id:u8, pos: [f32;2],splat: i32){
-        if splat > 0 {
-            for x in -splat..=splat {
-                for y in -splat..=splat {
-                    let i = ((pos[0] * DIV) as i32 + x) as usize * CELLS_HEIGHT + ((pos[1] * DIV) as i32 + y) as usize;
-                    self.rocks[i] = id;
+    pub fn set(&mut self,id:u8, pos: [f32;2],splat: i32) {
+        if pos[0] >= 0. && pos[0] < WORLD_WIDTH && pos[1] >= 0. && pos[1] <= WORLD_WIDTH{
+            if splat > 0 {
+                for x in -splat..=splat {
+                    for y in -splat..=splat {
+                        if pos[0] + x as f32 >= 0. && pos[0] + (x as f32) < WORLD_WIDTH && pos[1] + y as f32 >= 0. && pos[1] + (y as f32) < WORLD_WIDTH{
+                            let i = ((pos[0] * DIV) as i32 + x) as usize * CELLS_HEIGHT + ((pos[1] * DIV) as i32 + y) as usize;
+                            self.rocks[i] = id;
+                        }
+                    }
                 }
+            } else {
+                let i = (pos[0] * DIV) as usize * CELLS_HEIGHT + (pos[1] * DIV) as usize;
+                self.rocks[i] = id;
             }
-        }
-        else{
-            let i = (pos[0] * DIV) as usize * CELLS_HEIGHT + (pos[1] * DIV) as usize;
-            self.rocks[i] = id;
         }
     }
 }

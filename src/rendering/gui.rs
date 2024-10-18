@@ -170,6 +170,14 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.label("Physical Mutation Rate");
                 ui.add(egui::DragValue::new(&mut sim_params.physical_mutation_rate).clamp_range(0..=100));
             });
+            ui.horizontal(|ui|{
+                ui.label("Build Mode");
+                ui.add(egui::Checkbox::new(&mut sim_params.build_mode,""));
+            });
+            ui.horizontal(|ui|{
+                ui.label("Pen Size");
+                ui.add(egui::DragValue::new(&mut sim_params.pen_size).clamp_range(0..=10));
+            });
 
             ui.separator();
 

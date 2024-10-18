@@ -94,20 +94,10 @@ pub async fn run() {
                 WindowEvent::MouseInput { button,state,..} =>{
                     match button {
                         MouseButton::Left =>{
-                            if state.is_pressed(){
-                                inputs.left_mouse = true;
-                            }
-                            else{
-                                inputs.left_mouse = false;
-                            }
+                            inputs.left_mouse = state.is_pressed();
                         },
                         MouseButton::Right =>{
-                            if state.is_pressed(){
-                                inputs.right_mouse = true;
-                            }
-                            else{
-                                inputs.right_mouse = false;
-                            }
+                            inputs.right_mouse = state.is_pressed();
                         },
                         _ => (),
                     }
@@ -124,40 +114,43 @@ pub async fn run() {
                         frames = 0;
                         diagnostic_timer = SystemTime::now();
                     }
-                    for _ in 0..sim_params.steps_per_frame{
-                        if graph_timer.elapsed().unwrap().as_millis() >= 1000/sim_params.steps_per_frame as u128{
-                            stats.update_graphs(animals.count(), plants.count(), &animals.animals);
-                            graph_timer = SystemTime::now();
-                        }
-
-                        if step%60==0{
-                            for _ in 0..sim_params.plant_spawn_rate{
-                                plants.spawn(&rocks);
+                    if !sim_params.build_mode {
+                        for _ in 0..sim_params.steps_per_frame {
+                            if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.steps_per_frame as u128 {
+                                stats.update_graphs(animals.count(), plants.count(), &animals.animals);
+                                graph_timer = SystemTime::now();
                             }
-                            for _ in 0..1{
-                                animals.spawn();
+
+                            if step % 60 == 0 {
+                                for _ in 0..sim_params.plant_spawn_rate {
+                                    plants.spawn(&rocks);
+                                }
+                                for _ in 0..1 {
+                                    animals.spawn();
+                                }
                             }
-                        }
 
-                        if step%6 == 0{
-                            animals.kill();
-                            plants.kill();
-                            collisions.update_animal_grid(animals.instances().as_slice());
-                            collisions.update_plant_grid(plants.instances());
-                        }
+                            if step % 6 == 0 {
+                                animals.kill();
+                                plants.kill();
+                                collisions.update_animal_grid(animals.instances().as_slice());
+                                collisions.update_plant_grid(plants.instances());
+                            }
 
-                        if inputs.left_mouse{
-                            rocks.set(1,camera.screen_to_world_pos(inputs.mouse_pos),1);
-                        }
-                        else if inputs.right_mouse{
-                            rocks.set(0,camera.screen_to_world_pos(inputs.mouse_pos),1);
-                        }
+                            collisions.handle_collisions(&mut animals, &mut plants);
+                            eggs.update(&mut animals);
+                            animals.update(&mut plants, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
 
-                        collisions.handle_collisions(&mut animals,&mut plants);
-                        eggs.update(&mut animals);
-                        animals.update(&mut plants,&mut eggs,&mut sim_params,&collisions,&mut species_list,&rocks);
-
-                        step+=1;
+                            step += 1;
+                        }
+                    }
+                    else if !renderer.egui_context().is_pointer_over_area() {
+                        if inputs.left_mouse {
+                            rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+                            plants.remove_plants_in_walls(&rocks);
+                        } else if inputs.right_mouse {
+                            rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+                        }
                     }
 
                     camera.update(&inputs,&renderer.size());
