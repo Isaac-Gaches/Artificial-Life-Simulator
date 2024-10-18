@@ -154,7 +154,7 @@ pub async fn run() {
                     }
 
                     camera.update(&inputs,&renderer.size());
-                    renderer.update(&animals,&plants,&eggs,&inputs,&rocks,camera);
+                    renderer.update(&animals,&plants,&eggs,&rocks,camera);
 
                     let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 

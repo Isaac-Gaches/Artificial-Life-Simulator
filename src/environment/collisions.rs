@@ -5,8 +5,8 @@ use crate::environment::plants::Plants;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::rendering::instance::Instance;
 
-pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize + 2;
-pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize + 2;
+pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize;
+pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize;
 pub const CELL_SIZE: f32 = 0.4;
 pub const DIV: f32 = 1.0/CELL_SIZE;
 

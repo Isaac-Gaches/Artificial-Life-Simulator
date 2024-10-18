@@ -515,7 +515,7 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,inputs: &Inputs,rocks: &RockMap,camera: Camera){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,rocks: &RockMap,camera: Camera){
         self.buffers.animal_count = animals.count() as u32;
         self.buffers.plant_count = plants.count() as u32;
         self.buffers.egg_count = eggs.count() as u32;

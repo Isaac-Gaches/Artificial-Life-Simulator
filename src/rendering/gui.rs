@@ -176,7 +176,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             });
             ui.horizontal(|ui|{
                 ui.label("Pen Size");
-                ui.add(egui::DragValue::new(&mut sim_params.pen_size).clamp_range(0..=10));
+                ui.add(egui::DragValue::new(&mut sim_params.pen_size).clamp_range(0..=6));
             });
 
             ui.separator();
@@ -272,19 +272,27 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Species: {}", animal.species_id)));
                             ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
-                            ui.label(RichText::new(format!("Offspring Invest: {:.2}", animal.reproduction_stats.offspring_investment)));
+                            ui.label(RichText::new(format!("Age (min): {:.2}", animal.age/60.)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Energy: {:.2}", animal.resources.energy)));
                             ui.label(RichText::new(format!("Protein: {:.2}", animal.resources.protein)));
+                            ui.label(RichText::new(format!("Mass: {:.2}", animal.lean_mass)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
                             ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
+                            ui.label(RichText::new(format!("Offspring Invest: {:.2}", animal.reproduction_stats.offspring_investment)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Speed: {:.2}", animal.combat_stats.speed)));
                             ui.label(RichText::new(format!("Size: {:.2}", animal.body.scale)));
+                            ui.label(RichText::new(format!("Hue: {:.2}", animal.hue)));
+                        });
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Animal vision: {:.2}", animal.senses.animal_vision)));
+                            ui.label(RichText::new(format!("Plant vision: {:.2}", animal.senses.plant_vision)));
+                            ui.label(RichText::new(format!("Rock vision: {:.2}", animal.senses.rock_vision)));
                         });
                     });
                 }

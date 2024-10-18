@@ -18,15 +18,16 @@ use crate::rendering::instance::Instance;
 pub struct Animal{
     pub species_id: usize,
     pub maturity: f32,
-    lean_mass: f32,
+    pub lean_mass: f32,
     pub hue: f32,
     pub resources: Resources,
     pub body: Instance,
     pub brain: Network,
-    senses: SensoryInput,
+    pub senses: SensoryInput,
     max_stats: MaxStats,
     pub reproduction_stats: ReproductionStats,
     pub combat_stats: CombatStats,
+    pub age: f32,
 }
 
 impl Animal{
@@ -90,9 +91,9 @@ pub struct Resources{
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct SensoryInput{
-    animal_vision: f32,
-    plant_vision: f32,
-    rock_vision: f32,
+    pub animal_vision: f32,
+    pub plant_vision: f32,
+    pub rock_vision: f32,
 }
 
 impl Resources{
@@ -238,7 +239,7 @@ impl Animals{
         };
         let brain = Network::random(&[8,16,3]);
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
-        let mut body = Instance::new([rng.gen_range(0.0..WORLD_WIDTH), rng.gen_range(0.0..WORLD_HEIGHT)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
+        let mut body = Instance::new([rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0), rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let hue = rng.gen_range(0.0..=1.0);
         body.set_hsl(hue,1.0);
         let resources = Resources{ energy: 300.0, protein: 0.0 };
@@ -257,6 +258,7 @@ impl Animals{
             max_stats,
             reproduction_stats,
             combat_stats,
+            age: 0.0,
         };
 
         self.animals.push(animal);
@@ -321,6 +323,22 @@ impl Animals{
                 }
             }
 
+           /* let start = animal.body.position[0];
+            animal.body.position[0] += response.index(0).max(0.0) * 0.01 * animal.body.rotation.cos() * animal.combat_stats.speed;
+
+            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
+            if arc.rocks[i] > 0{
+                animal.body.position[0] = start;
+            }
+
+            let start = animal.body.position[1];
+            animal.body.position[1] += response.index(0).max(0.0) * 0.01 * animal.body.rotation.sin() * animal.combat_stats.speed;
+
+            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
+            if arc.rocks[i] > 0{
+                animal.body.position[1] = start;
+            }*/
+
             animal.body.rotation += response.index(1) * 0.04 * animal.combat_stats.speed;
             animal.combat_stats.aggression = response.index(2).max(0.);
             animal.resources.energy -=
@@ -360,6 +378,8 @@ impl Animals{
             else if animal.body.rotation < -PI{
                 animal.body.rotation = PI;
             }
+
+            animal.age+=1./60.;
 
 /*            if sim_params.highlighted_species > 0 && animal.species_id == sim_params.highlighted_species as usize{
                 animal.body.color = [1.,1.,1.];
