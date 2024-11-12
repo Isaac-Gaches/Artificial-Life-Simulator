@@ -14,6 +14,8 @@ use crate::utilities::statistics::Stats;
 #[derive(Default)]
 pub struct Toggles{
     population_graphs: bool,
+    plant_settings: bool,
+    animal_settings: bool,
     animals: bool,
     herbivores: bool,
     omnivores: bool,
@@ -124,6 +126,54 @@ impl EguiRenderer {
             self.renderer.free_texture(x)
         }
     }
+    pub fn draw_main_menu(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        encoder: &mut CommandEncoder,
+        window: &Window,
+        window_surface_view: &TextureView,
+        screen_descriptor: ScreenDescriptor,
+        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State),
+        state: &mut crate::utilities::state::State
+    ) {
+        let raw_input = self.state.take_egui_input(window);
+        let full_output = self.context.run(raw_input, |_ui| {
+            run_ui(&self.context,state);
+        });
+
+        self.state
+            .handle_platform_output(window, full_output.platform_output);
+
+        let tris = self
+            .context
+            .tessellate(full_output.shapes, full_output.pixels_per_point);
+        for (id, image_delta) in &full_output.textures_delta.set {
+            self.renderer
+                .update_texture(device, queue, *id, image_delta);
+        }
+        self.renderer
+            .update_buffers(device, queue, encoder, &tris, &screen_descriptor);
+        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: window_surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            label: Some("egui main render pass"),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        self.renderer.render(&mut rpass, &tris, &screen_descriptor);
+        drop(rpass);
+        for x in &full_output.textures_delta.free {
+            self.renderer.free_texture(x)
+        }
+    }
 }
 
 pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: Option<&Animal>) {
@@ -149,7 +199,15 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             ui.separator();
 
             ui.heading("Settings");
+
             ui.separator();
+
+            if ui.selectable_label(toggles.plant_settings, RichText::new("Plant Settings").heading()).clicked(){
+                toggles.plant_settings = !toggles.plant_settings;
+            }
+            if ui.selectable_label(toggles.animal_settings, RichText::new("Animal Settings").heading()).clicked(){
+                toggles.animal_settings = !toggles.animal_settings;
+            }
             ui.horizontal(|ui| {
                 ui.label("Stats Refresh Time");
                 ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=300));
@@ -157,18 +215,6 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             ui.horizontal(|ui|{
                 ui.label("Steps Per Frame");
                 ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=100));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Plants Per Second");
-                ui.add(egui::DragValue::new(&mut sim_params.plant_spawn_rate).clamp_range(0..=100));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Brain Mutation Rate");
-                ui.add(egui::DragValue::new(&mut sim_params.brain_mutation_rate).clamp_range(0..=100));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Physical Mutation Rate");
-                ui.add(egui::DragValue::new(&mut sim_params.physical_mutation_rate).clamp_range(0..=100));
             });
             ui.horizontal(|ui|{
                 ui.label("Build Mode");
@@ -191,24 +237,19 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
         egui::Window::new("Network")
             .default_width(550.0)
             .resizable(false)
+            .collapsible(false)
             .show(ui, |ui| {
                 if let Some(animal) = animal {
                     ui.horizontal(|ui| {
-                        ui.label("Plant angle");
+                        ui.label("  Plant vision ");
                         ui.separator();
-                        ui.label("Plant dist");
+                        ui.label("             Animal vision             ");
                         ui.separator();
-                        ui.label("Animal angle");
+                        ui.label("Rock vision");
                         ui.separator();
-                        ui.label("Animal dist");
+                        ui.label("Internal state");
                         ui.separator();
-                        ui.label("Same species");
-                        ui.separator();
-                        ui.label("Herbivore");
-                        ui.separator();
-                        ui.label("Rock left");
-                        ui.separator();
-                        ui.label("Rock right");
+                        ui.label("      Endocrine");
                     });
                     Frame::canvas(ui.style()).show(ui, |ui| {
                         let (response, painter) = ui.allocate_painter(Vec2::new(ui.available_width(), ui.available_width() * 0.5), Sense::hover());
@@ -218,13 +259,13 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                             response.rect,
                         );
 
-                        let network = &animal.brain;
+                        let network = &animal.brain.network;
 
                         let spacing_x = 0.9 / (network.layers.len() as f32 - 1.0);
                         let neurons: Vec<Shape> = network.layers.iter().enumerate().flat_map(|(i, layer)| {
                             let spacing = 1.9 / (layer.neurons.len() - 1) as f32;
                             layer.neurons.iter().enumerate().map(move |(j, neuron)| {
-                                let c = (neuron.activation.abs() * 255.) as u8;
+                                let c = (neuron.activation * 255.) as u8;
                                 let fill = Color32::from_rgb(c, c, c);
 
                                 Shape::Circle(CircleShape {
@@ -259,11 +300,11 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         painter.extend(neurons);
                     });
                     ui.horizontal(|ui| {
-                        ui.label("Move forward");
+                        ui.label("    Move    ");
                         ui.separator();
-                        ui.label("                                                      Turn                                                          ");
+                        ui.label("                           Turn                           ");
                         ui.separator();
-                        ui.label("Aggression");
+                        ui.label("                               Endocrine");
                     });
 
                     ui.separator();
@@ -305,6 +346,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
         egui::Window::new("Population Graphs")
             .default_width(550.0)
             .resizable(true)
+            .collapsible(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Animals"),|ui|{
                     let animals =Line::new(PlotPoints::new(stats.animal_pop.clone())).color(Color32::WHITE);
@@ -346,6 +388,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
     if toggles.diagnostics {
         egui::Window::new("Diagnostics")
             .resizable(false)
+            .collapsible(false)
             .show(ui, |ui| {
                 ui.label(RichText::new(format!("FPS: {}",stats.fps)));
                 ui.label(RichText::new(format!("Total CPU Usage: {:.2}%",stats.tot_cpu_usage)));
@@ -362,6 +405,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
         egui::Window::new("Distributions")
             .default_width(550.0)
             .resizable(false)
+            .collapsible(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
                     let bars = stats.diet_dist.iter().enumerate().map(|(i,diet)|{
@@ -377,4 +421,60 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
             });
     }
+    if toggles.plant_settings {
+        egui::Window::new("Plant Settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Spawn rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0..=50));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Max density");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.max_density).clamp_range(0.0..=2.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Energy");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.energy).clamp_range(0.0..=500.));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Protein");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.protein).clamp_range(0.0..=10.));
+                });
+            });
+    }
+    if toggles.animal_settings {
+        egui::Window::new("Animal Settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui|{
+                    ui.label("Brain Mutation Rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.brain_mutation_rate).clamp_range(0..=100));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Brain Mutation Strength");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.brain_mutation_strength).clamp_range(0..=100));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Physical Mutation Rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.physical_mutation_rate).clamp_range(0..=100));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Physical Mutation Strength");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.physical_mutation_strength).clamp_range(0..=100));
+                });
+            });
+    }
+}
+
+pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State) {
+    egui::CentralPanel::default()
+        .show(ui,|ui|{
+            ui.heading("menu");
+            if ui.selectable_label(state.menu, RichText::new("Run").heading()).clicked(){
+                state.menu = !state.menu;
+            }
+        });
 }

@@ -4,6 +4,7 @@ use crate::environment::animal::Animals;
 use crate::environment::plants::Plants;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::rendering::instance::Instance;
+use crate::utilities::simulation_parameters::SimParams;
 
 pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize;
 pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize;
@@ -29,7 +30,7 @@ impl Cell{
     fn add(&mut self, id: usize){
         self.object_ids.push(id);
     }
-    fn count(&self)-> usize{
+    pub fn count(&self)-> usize{
         self.object_ids.len()
     }
 }
@@ -56,7 +57,7 @@ impl Collisions{
             self.plants_grid[i].add(id);
         });
     }
-    pub fn handle_collisions(&mut self, animals: &mut Animals, plants: &mut Plants){
+    pub fn handle_collisions(&mut self, animals: &mut Animals, plants: &mut Plants,sim_params: &SimParams){
         for x in 0..CELLS_WIDTH{
             for y in 0..CELLS_HEIGHT{
                 for z in 0..self.animals_grid[x * CELLS_HEIGHT + y].count(){
@@ -95,8 +96,8 @@ impl Collisions{
                                 let relative_pos_y = plant_body.position[1] - animal_body.position[1];
 
                                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !plants.plants[plant_id].eaten{
-                                    let energy = plants.handle_collision(plant_id);
-                                    animals.handle_plant_collision(animal_id,energy);
+                                    let resources = plants.handle_collision(plant_id,sim_params);
+                                    animals.handle_plant_collision(animal_id,resources);
                                 }
 
                             }

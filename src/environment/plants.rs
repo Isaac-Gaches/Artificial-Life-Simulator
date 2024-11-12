@@ -2,9 +2,10 @@ use std::ops::{Index, IndexMut};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
-use crate::environment::collisions::{CELLS_HEIGHT, DIV};
+use crate::environment::collisions::{CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
 use crate::environment::rocks::RockMap;
 use crate::rendering::instance::Instance;
+use crate::utilities::simulation_parameters::SimParams;
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Plant{
@@ -30,9 +31,9 @@ impl Plants {
         &self.bodies
     }
 
-    pub fn handle_collision(&mut self,plant_id:usize)->(f32,f32){
+    pub fn handle_collision(&mut self,plant_id:usize,sim_params: &SimParams)->(f32,f32){
         self.plants.index_mut(plant_id).eaten = true;
-        (150.,0.2)
+        (sim_params.plants.energy,sim_params.plants.protein)
     }
 
     pub fn count(&self)->usize{
@@ -47,8 +48,8 @@ impl Plants {
         });
     }
 
-    pub fn spawn(&mut self,rock_map: &RockMap){
-        loop{
+    pub fn spawn(&mut self,rock_map: &RockMap,collisions: &Collisions,sim_params: &SimParams){
+        for _trials in 0..100{
             let x = rand::thread_rng().gen_range(0.0..WORLD_WIDTH);
             let y = rand::thread_rng().gen_range(0.0..WORLD_HEIGHT);
 
@@ -64,10 +65,21 @@ impl Plants {
                 }
             }
 
-            if spawn{
-                self.bodies.push(Instance::new([x, y], [0.0, 1.0, 0.0], 0.0, 0.06));
-                self.plants.push(Plant { eaten: false });
-                break;
+            if spawn == true {
+                let mut plants = 0;
+
+                for m in -2..=2 {
+                    for n in -2..=2 {
+                        let i = (x * DIV + m as f32) as usize * CELLS_HEIGHT + (y * DIV + n as f32) as usize;
+                        plants += collisions.plants_grid[i].count();
+                    }
+                }
+
+                if plants < (sim_params.plants.max_density * 16.0) as usize {
+                    self.bodies.push(Instance::new([x, y], [0.0, 1.0, 0.0], 0.0, 0.06));
+                    self.plants.push(Plant { eaten: false });
+                    break;
+                }
             }
         }
     }

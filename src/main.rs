@@ -22,6 +22,7 @@ use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
 use crate::utilities::save_system::SaveSystem;
+use crate::utilities::state::State;
 
 fn main() {
     pollster::block_on(run());
@@ -40,13 +41,14 @@ pub async fn run() {
     let mut inputs = Inputs::default();
     let mut frames = 0;
     let mut system = System::default();
+    let mut state = State{ menu: true };
     let mut camera = Camera{
         position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
         zoom: 0.05,
         ratio: 1.0,
     };
 
-/*    let mut step = 0;
+    let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
     let mut stats = utilities::statistics::Stats::default();
@@ -55,9 +57,9 @@ pub async fn run() {
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
     let mut rocks = RockMap::new();
-    rocks.randomise();*/
+    rocks.randomise();
 
-    let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+   // let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -109,65 +111,79 @@ pub async fn run() {
                     renderer.resize(Some(*physical_size));
                 }
                 WindowEvent::RedrawRequested => {
-                    if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
-                        stats.update_diagnostics(frames,&mut system);
-                        frames = 0;
-                        diagnostic_timer = SystemTime::now();
+                    if state.menu{
+                        match renderer.main_menu(&mut state) {
+                            Ok(_) => {}
+                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                                renderer.resize(None);
+                            }
+                            Err(wgpu::SurfaceError::OutOfMemory) => ewlt.exit(),
+                            Err(wgpu::SurfaceError::Timeout) => {},
+                        }
                     }
-                    if !sim_params.build_mode {
-                        for _ in 0..sim_params.steps_per_frame {
-                            if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.steps_per_frame as u128 {
-                                stats.update_graphs(animals.count(), plants.count(), &animals.animals);
-                                graph_timer = SystemTime::now();
-                            }
-
-                            if step % 60 == 0 {
-                                for _ in 0..sim_params.plant_spawn_rate {
-                                    plants.spawn(&rocks);
+                    else {
+                        if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
+                            stats.update_diagnostics(frames,&mut system);
+                            frames = 0;
+                            diagnostic_timer = SystemTime::now();
+                        }
+                        if !sim_params.build_mode {
+                            for _ in 0..sim_params.steps_per_frame {
+                                if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.steps_per_frame as u128 {
+                                    stats.update_graphs(animals.count(), plants.count(), &animals.animals);
+                                    graph_timer = SystemTime::now();
                                 }
-                                for _ in 0..1 {
-                                    animals.spawn();
-                                }
-                            }
 
-                            if step % 6 == 0 {
-                                animals.kill();
-                                plants.kill();
-                                collisions.update_animal_grid(animals.instances().as_slice());
+                                if step % 60 == 0 {
+                                    for _ in 0..sim_params.plants.spawn_rate {
+                                        plants.spawn(&rocks,&collisions,&sim_params);
+                                    }
+                                    for _ in 0..1 {
+                                        animals.spawn();
+                                    }
+                                }
+
+                                if step % 6 == 0 {
+                                    animals.kill();
+                                    plants.kill();
+                                    collisions.update_animal_grid(animals.instances().as_slice());
+                                    collisions.update_plant_grid(plants.instances());
+                                }
+
+                                collisions.handle_collisions(&mut animals, &mut plants, &sim_params);
+                                eggs.update(&mut animals);
+                                animals.update(&mut plants, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
+
+                                step += 1;
+                            }
+                        }
+                        else if !renderer.egui_context().is_pointer_over_area() {
+                            if inputs.left_mouse {
+                                rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+                                plants.remove_plants_in_walls(&rocks);
                                 collisions.update_plant_grid(plants.instances());
+                            } else if inputs.right_mouse {
+                                rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
                             }
-
-                            collisions.handle_collisions(&mut animals, &mut plants);
-                            eggs.update(&mut animals);
-                            animals.update(&mut plants, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
-
-                            step += 1;
                         }
-                    }
-                    else if !renderer.egui_context().is_pointer_over_area() {
-                        if inputs.left_mouse {
-                            rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
-                            plants.remove_plants_in_walls(&rocks);
-                        } else if inputs.right_mouse {
-                            rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+
+                        camera.update(&inputs,&renderer.size());
+                        renderer.update(&animals,&plants,&eggs,&rocks,camera);
+
+                        let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
+
+                        match renderer.render(&mut stats,&mut sim_params,net) {
+                            Ok(_) => {}
+                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                                renderer.resize(None);
+                            }
+                            Err(wgpu::SurfaceError::OutOfMemory) => ewlt.exit(),
+                            Err(wgpu::SurfaceError::Timeout) => {},
                         }
-                    }
 
-                    camera.update(&inputs,&renderer.size());
-                    renderer.update(&animals,&plants,&eggs,&rocks,camera);
-
-                    let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
-
-                    match renderer.render(&mut stats,&mut sim_params,net) {
-                        Ok(_) => {}
-                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                            renderer.resize(None);
-                        }
-                        Err(wgpu::SurfaceError::OutOfMemory) => ewlt.exit(),
-                        Err(wgpu::SurfaceError::Timeout) => {},
+                        frames+=1;
                     }
 
-                    frames+=1;
                     renderer.window().request_redraw();
                 }
                 _ => {}

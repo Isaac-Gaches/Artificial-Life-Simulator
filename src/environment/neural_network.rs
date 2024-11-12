@@ -36,9 +36,9 @@ impl Network{
         let layers = layers.windows(2).map(|layers| { Layer::random(layers[0], layers[1]) }).collect();
         Self { layers }
     }
-    pub fn mutate(&mut self,strength: f32){
+    pub fn mutate(&mut self,strength: f32,probability: f32){
         for i in 1..self.layers.len(){
-            self.layers[i].mutate(strength);
+            self.layers[i].mutate(strength,probability);
         }
     }
     pub fn compare(&self, other: &Network) -> f32{
@@ -52,7 +52,7 @@ impl Network{
     }
 }
 impl Layer{
-    fn activations(&self)->Vec<f32>{
+    pub fn activations(&self)->Vec<f32>{
         self.neurons.iter().map(|neuron| neuron.activation).collect()
     }
     fn propagate(&mut self,inputs: Vec<f32>) -> Vec<f32>{
@@ -66,8 +66,8 @@ impl Layer{
         let neurons = (0..output_size).map(|_| Neuron::zero(input_size)).collect();
         Self { neurons }
     }
-    fn mutate(&mut self,strength: f32){
-        self.neurons.iter_mut().for_each(|neuron| neuron.mutate(strength));
+    fn mutate(&mut self,strength: f32,probability: f32){
+        self.neurons.iter_mut().for_each(|neuron| neuron.mutate(strength,probability));
     }
     fn compare(&self, other: &Layer) -> f32{
         self.neurons.iter().zip(other.neurons.iter()).map(|neuron|{ neuron.0.compare(neuron.1) }).sum::<f32>()
@@ -78,7 +78,8 @@ impl Neuron{
         self.activation = 0.;
 
         let input = inputs.iter().zip(&self.weights).map(|(input, weight)| input * weight).sum::<f32>();
-        self.activation = (input+self.bias).tanh();
+        //self.activation = (input+self.bias).tanh();
+        self.activation = (input+self.bias).max(0.);
 
         self.activation
     }
@@ -92,12 +93,12 @@ impl Neuron{
         let weights = vec![0.;input_size];
         Self { activation: 0.0, weights, bias: 0.0 }
     }
-    fn mutate(&mut self,strength: f32){
+    fn mutate(&mut self,strength: f32,probability: f32){
         let mut rng = rand::thread_rng();
-        self.weights.iter_mut().for_each(|weight| if rng.gen_bool(strength as f64){
+        self.weights.iter_mut().for_each(|weight| if rng.gen_bool(probability as f64){
             *weight += rng.gen_range(-strength..=strength);
         });
-        if rng.gen_bool(strength as f64){
+        if rng.gen_bool(probability as f64){
             self.bias += rng.gen_range(-strength..=strength);
         }
     }

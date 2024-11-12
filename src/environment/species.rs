@@ -9,7 +9,7 @@ struct Species{
 }
 impl Species{
     fn compare(&self, animal: &Animal) -> f32{
-        self.specimen.brain.compare(&animal.brain)
+        self.specimen.brain.network.compare(&animal.brain.network)
     }
 }
 #[derive(Default,Serialize,Deserialize,Clone)]

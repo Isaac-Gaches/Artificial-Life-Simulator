@@ -9,14 +9,14 @@ use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::{Animal, Animals};
 use crate::environment::eggs::Eggs;
-use crate::rendering::gui::{EguiRenderer, gui};
-use crate::utilities::input_manager::Inputs;
+use crate::rendering::gui::{EguiRenderer, gui, main_menu_gui};
 use crate::environment::plants::Plants;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::rendering::instance::Instance;
+use crate::utilities::state::State;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -354,7 +354,7 @@ impl Renderer {
 
         let animal_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to render animals"),
-            size: 32768,
+            size: 40000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -368,7 +368,7 @@ impl Renderer {
 
         let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to eggs"),
-            size: 8192,
+            size: 40000,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -489,6 +489,47 @@ impl Renderer {
             stats,
             sim_params,
             animal,
+        );
+
+        self.queue.submit(iter::once(encoder.finish()));
+        output.present();
+
+        Ok(())
+    }
+
+    pub fn main_menu(&mut self, state: &mut State) -> Result<(), wgpu::SurfaceError> {
+        let output = self.surface.get_current_texture()?;
+
+        let view = output.texture.create_view(&TextureViewDescriptor {
+            label: None,
+            format: None,
+            dimension: None,
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None,
+        });
+
+        let mut encoder = self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [self.config.width, self.config.height],
+            pixels_per_point: self.window.scale_factor() as f32,
+        };
+
+        self.egui.draw_main_menu(
+            &self.device,
+            &self.queue,
+            &mut encoder,
+            &self.window,
+            &view,
+            screen_descriptor,
+            main_menu_gui,
+            state
         );
 
         self.queue.submit(iter::once(encoder.finish()));
