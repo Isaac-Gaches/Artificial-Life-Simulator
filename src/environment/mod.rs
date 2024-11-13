@@ -5,3 +5,4 @@ pub mod eggs;
 pub mod collisions;
 pub mod species;
 pub mod rocks;
+pub mod fruit;

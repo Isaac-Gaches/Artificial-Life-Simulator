@@ -51,6 +51,7 @@ pub async fn run() {
     let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
+    let mut fruit = environment::fruit::Fruits::genesis();
     let mut stats = utilities::statistics::Stats::default();
     let mut eggs = environment::eggs::Eggs::default();
     let mut collisions = environment::collisions::Collisions::new();
@@ -136,11 +137,12 @@ pub async fn run() {
 
                                 if step % 60 == 0 {
                                     for _ in 0..sim_params.plants.spawn_rate {
-                                        plants.spawn(&rocks,&collisions,&sim_params);
+                                        plants.spawn(&rocks);
                                     }
-                                    for _ in 0..1 {
-                                        animals.spawn();
+                                    for _ in 0..sim_params.fruit.spawn_rate {
+                                        fruit.spawn(&rocks);
                                     }
+                                    animals.spawn();
                                 }
 
                                 if step % 6 == 0 {
@@ -161,6 +163,7 @@ pub async fn run() {
                             if inputs.left_mouse {
                                 rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
                                 plants.remove_plants_in_walls(&rocks);
+                                fruit.remove_plants_in_walls(&rocks);
                                 collisions.update_plant_grid(plants.instances());
                             } else if inputs.right_mouse {
                                 rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
@@ -168,7 +171,7 @@ pub async fn run() {
                         }
 
                         camera.update(&inputs,&renderer.size());
-                        renderer.update(&animals,&plants,&eggs,&rocks,camera);
+                        renderer.update(&animals,&plants,&fruit,&eggs,&rocks,camera);
 
                         let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 

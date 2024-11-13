@@ -8,31 +8,31 @@ use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
 
 #[derive(Clone,Serialize,Deserialize)]
-pub struct Plant{
+pub struct Fruit{
     pub eaten: bool,
 }
 #[derive(Clone,Serialize,Deserialize)]
-pub struct Plants{
-    pub plants: Vec<Plant>,
+pub struct Fruits{
+    pub fruit: Vec<Fruit>,
     pub bodies: Vec<Instance>,
 }
-impl Plants {
+impl Fruits {
     pub fn genesis()->Self{
         Self{
-            plants: vec![],
+            fruit: vec![],
             bodies: vec![],
         }
     }
     pub fn remove(&mut self, i: usize){
         self.bodies.remove(i);
-        self.plants.remove(i);
+        self.fruit.remove(i);
     }
     pub fn instances(&self) -> &Vec<Instance>{
         &self.bodies
     }
 
     pub fn handle_collision(&mut self,plant_id:usize,sim_params: &SimParams)->(f32,f32){
-        self.plants.index_mut(plant_id).eaten = true;
+        self.fruit.index_mut(plant_id).eaten = true;
         (sim_params.plants.energy,sim_params.plants.protein)
     }
 
@@ -42,7 +42,7 @@ impl Plants {
 
     pub fn kill(&mut self){
         (0..self.count()).rev().for_each(|i|{
-            if self.plants.index(i).eaten{
+            if self.fruit.index(i).eaten{
                 self.remove(i);
             }
         });
@@ -66,8 +66,8 @@ impl Plants {
             }
 
             if spawn {
-                self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
-                self.plants.push(Plant { eaten: false });
+                self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
+                self.fruit.push(Fruit { eaten: false });
                 break;
             }
         }

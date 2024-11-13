@@ -9,6 +9,7 @@ use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::{Animal, Animals};
 use crate::environment::eggs::Eggs;
+use crate::environment::fruit::Fruits;
 use crate::rendering::gui::{EguiRenderer, gui, main_menu_gui};
 use crate::environment::plants::Plants;
 use crate::utilities::simulation_parameters::SimParams;
@@ -75,6 +76,8 @@ struct Buffers{
     animal_count: u32,
     plant_buffer: Buffer,
     plant_count: u32,
+    fruit_buffer: Buffer,
+    fruit_count: u32,
     egg_buffer: Buffer,
     egg_count: u32,
     rock_buffer: Buffer,
@@ -366,6 +369,13 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        let fruit_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("Buffer to render plants"),
+            size: 10000000,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
             label: Some("Buffer to eggs"),
             size: 40000,
@@ -389,6 +399,8 @@ impl Renderer {
             animal_count: 0,
             plant_buffer,
             plant_count: 0,
+            fruit_buffer,
+            fruit_count: 0,
             egg_buffer,
             egg_count: 0,
             rock_buffer,
@@ -466,6 +478,10 @@ impl Renderer {
         render_pass.set_vertex_buffer(1, self.buffers.plant_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.plant_count);
 
+        //fruit
+        render_pass.set_vertex_buffer(1, self.buffers.fruit_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.fruit_count);
+
         //eggs
         render_pass.set_vertex_buffer(1, self.buffers.egg_buffer.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.egg_count);
@@ -538,7 +554,7 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn resize(&mut self, new_size: Option<winit::dpi::PhysicalSize<u32>>) {
+    pub fn resize(&mut self, new_size: Option<PhysicalSize<u32>>) {
         let new_size= match new_size {
             Some(new_size) =>{
                 new_size
@@ -556,15 +572,17 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,eggs: &Eggs,rocks: &RockMap,camera: Camera){
+    pub fn update(&mut self,animals: &Animals,plants: &Plants,fruit: &Fruits,eggs: &Eggs,rocks: &RockMap,camera: Camera){
         self.buffers.animal_count = animals.count() as u32;
         self.buffers.plant_count = plants.count() as u32;
+        self.buffers.fruit_count = fruit.count() as u32;
         self.buffers.egg_count = eggs.count() as u32;
         self.buffers.rock_count = rocks.count();
 
         self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[camera]));
         self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
+        self.queue.write_buffer(&self.buffers.fruit_buffer,0,bytemuck::cast_slice(fruit.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
         self.queue.write_buffer(&self.buffers.rock_buffer,0,bytemuck::cast_slice(rocks.instances().as_slice()));
     }

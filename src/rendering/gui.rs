@@ -15,6 +15,7 @@ use crate::utilities::statistics::Stats;
 pub struct Toggles{
     population_graphs: bool,
     plant_settings: bool,
+    fruit_settings: bool,
     animal_settings: bool,
     animals: bool,
     herbivores: bool,
@@ -204,6 +205,9 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
             if ui.selectable_label(toggles.plant_settings, RichText::new("Plant Settings").heading()).clicked(){
                 toggles.plant_settings = !toggles.plant_settings;
+            }
+            if ui.selectable_label(toggles.fruit_settings, RichText::new("Fruit Settings").heading()).clicked(){
+                toggles.fruit_settings = !toggles.fruit_settings;
             }
             if ui.selectable_label(toggles.animal_settings, RichText::new("Animal Settings").heading()).clicked(){
                 toggles.animal_settings = !toggles.animal_settings;
@@ -431,10 +435,6 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0..=50));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Max density");
-                    ui.add(egui::DragValue::new(&mut sim_params.plants.max_density).clamp_range(0.0..=2.0));
-                });
-                ui.horizontal(|ui| {
                     ui.label("Energy");
                     ui.add(egui::DragValue::new(&mut sim_params.plants.energy).clamp_range(0.0..=500.));
                 });
@@ -464,6 +464,25 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.horizontal(|ui|{
                     ui.label("Physical Mutation Strength");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.physical_mutation_strength).clamp_range(0..=100));
+                });
+            });
+    }
+    if toggles.fruit_settings {
+        egui::Window::new("Fruit Settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Spawn rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0..=50));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Energy");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.energy).clamp_range(0.0..=500.));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Protein");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.protein).clamp_range(0.0..=10.));
                 });
             });
     }
