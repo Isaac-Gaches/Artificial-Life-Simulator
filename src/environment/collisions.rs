@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
 use crate::environment::plants::Plants;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+use crate::environment::fruit::Fruits;
 use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
 
@@ -15,6 +16,7 @@ pub const DIV: f32 = 1.0/CELL_SIZE;
 pub struct Collisions{
     pub animals_grid: Vec<Cell>,
     pub plants_grid: Vec<Cell>,
+    pub fruit_grid: Vec<Cell>,
 }
 #[derive(Default,Clone,Serialize,Deserialize)]
 pub struct Cell{
@@ -39,6 +41,7 @@ impl Collisions{
         Self{
             animals_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
             plants_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
+            fruit_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
         }
     }
     pub fn update_animal_grid(&mut self,objects: &[Instance]){
@@ -57,13 +60,22 @@ impl Collisions{
             self.plants_grid[i].add(id);
         });
     }
-    pub fn handle_collisions(&mut self, animals: &mut Animals, plants: &mut Plants,sim_params: &SimParams){
+    pub fn update_fruit_grid(&mut self,objects: &[Instance]){
+        self.fruit_grid.par_iter_mut().for_each(|cell| cell.clear());
+
+        objects.iter().enumerate().for_each(|(id,instance)|{
+            let i = (instance.position[0] * DIV ) as usize * CELLS_HEIGHT + (instance.position[1] * DIV ) as usize;
+            self.fruit_grid[i].add(id);
+        });
+    }
+    pub fn handle_collisions(&mut self, animals: &mut Animals, plants: &mut Plants,fruit: &mut Fruits,sim_params: &SimParams){
         for x in 0..CELLS_WIDTH{
             for y in 0..CELLS_HEIGHT{
                 for z in 0..self.animals_grid[x * CELLS_HEIGHT + y].count(){
                     let animal_id = self.animals_grid[x * CELLS_HEIGHT + y].index(z);
                     let animal_body = animals.animals[animal_id].body;
 
+                    //animals
                     for i in 0..3{
                         for j in 0..3{
                             let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
@@ -84,12 +96,16 @@ impl Collisions{
                         }
                     }
 
+                    //plants
                     for i in 0..3{
                         for j in 0..3{
                             let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
 
                             for k in 0..self.plants_grid[grid_index].count(){
                                 let plant_id = self.plants_grid[grid_index].index(k);
+                                if plants.plants[plant_id].eaten{
+                                    continue;
+                                }
                                 let plant_body = plants.bodies[plant_id];
 
                                 let relative_pos_x = plant_body.position[0] - animal_body.position[0];
@@ -97,6 +113,30 @@ impl Collisions{
 
                                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !plants.plants[plant_id].eaten{
                                     let resources = plants.handle_collision(plant_id,sim_params);
+                                    animals.handle_plant_collision(animal_id,resources);
+                                }
+
+                            }
+                        }
+                    }
+
+                    //fruit
+                    for i in 0..3{
+                        for j in 0..3{
+                            let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
+
+                            for k in 0..self.fruit_grid[grid_index].count(){
+                                let fruit_id = self.fruit_grid[grid_index].index(k);
+                                if fruit.fruit[fruit_id].eaten{
+                                    continue;
+                                }
+                                let fruit_body = fruit.bodies[fruit_id];
+
+                                let relative_pos_x = fruit_body.position[0] - animal_body.position[0];
+                                let relative_pos_y = fruit_body.position[1] - animal_body.position[1];
+
+                                if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !plants.plants[fruit_id].eaten{
+                                    let resources = fruit.handle_collision(fruit_id,sim_params);
                                     animals.handle_plant_collision(animal_id,resources);
                                 }
 

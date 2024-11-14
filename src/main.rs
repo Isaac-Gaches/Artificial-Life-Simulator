@@ -47,7 +47,6 @@ pub async fn run() {
         zoom: 0.05,
         ratio: 1.0,
     };
-
     let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
@@ -135,11 +134,11 @@ pub async fn run() {
                                     graph_timer = SystemTime::now();
                                 }
 
-                                if step % 60 == 0 {
-                                    for _ in 0..sim_params.plants.spawn_rate {
+                                if step % 60 * 4 == 0 {
+                                    for _ in 0..(sim_params.plants.spawn_rate*4.0) as u32{
                                         plants.spawn(&rocks);
                                     }
-                                    for _ in 0..sim_params.fruit.spawn_rate {
+                                    for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
                                         fruit.spawn(&rocks);
                                     }
                                     animals.spawn();
@@ -148,13 +147,15 @@ pub async fn run() {
                                 if step % 6 == 0 {
                                     animals.kill();
                                     plants.kill();
+                                    fruit.kill();
                                     collisions.update_animal_grid(animals.instances().as_slice());
                                     collisions.update_plant_grid(plants.instances());
+                                    collisions.update_fruit_grid(fruit.instances());
                                 }
 
-                                collisions.handle_collisions(&mut animals, &mut plants, &sim_params);
+                                collisions.handle_collisions(&mut animals, &mut plants, &mut fruit, &sim_params);
                                 eggs.update(&mut animals);
-                                animals.update(&mut plants, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
+                                animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
 
                                 step += 1;
                             }
@@ -165,6 +166,7 @@ pub async fn run() {
                                 plants.remove_plants_in_walls(&rocks);
                                 fruit.remove_plants_in_walls(&rocks);
                                 collisions.update_plant_grid(plants.instances());
+                                collisions.update_fruit_grid(fruit.instances());
                             } else if inputs.right_mouse {
                                 rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
                             }

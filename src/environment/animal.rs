@@ -9,6 +9,7 @@ use crate::environment::neural_network::Network;
 use crate::environment::plants::Plants;
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::collisions::{CELL_SIZE, CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
+use crate::environment::fruit::Fruits;
 use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
@@ -52,6 +53,7 @@ impl Animal{
         if rng.gen_bool(mutation_rate) { new_animal.senses.animal_vision = (new_animal.senses.animal_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
         if rng.gen_bool(mutation_rate) { new_animal.senses.plant_vision = (new_animal.senses.plant_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
         if rng.gen_bool(mutation_rate) { new_animal.senses.rock_vision = (new_animal.senses.rock_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
+        if rng.gen_bool(mutation_rate) { new_animal.senses.fruit_vision = (new_animal.senses.fruit_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
 
         if rng.gen_bool(mutation_rate) {
             new_animal.hue = (new_animal.hue + rng.gen_range(-mutation_strength..=mutation_strength)).rem_euclid(1.);
@@ -110,6 +112,7 @@ pub struct Resources{
 pub struct SensoryInput{
     pub animal_vision: f32,
     pub plant_vision: f32,
+    pub fruit_vision: f32,
     pub rock_vision: f32,
 }
 
@@ -121,7 +124,7 @@ impl Resources{
 }
 
 impl SensoryInput{
-    fn stimulus(&self, plants: &[Instance], body: &Instance, animals: &[Animal],animal: &Animal,collisions: &Collisions, rock_map: &RockMap) -> Vec<f32>{
+    fn stimulus(&self, plants: &[Instance],fruit: &[Instance], body: &Instance, animals: &[Animal],animal: &Animal,collisions: &Collisions, rock_map: &RockMap) -> Vec<f32>{
         let mut input = Vec::new();
 
         let mut closest = f32::MAX;
@@ -152,6 +155,35 @@ impl SensoryInput{
             angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
             input.push(angle / PI);
             input.push(((self.plant_vision * CELL_SIZE) - closest).max(0.0) / (self.plant_vision * CELL_SIZE));
+        }
+        else{
+            input.push(0.);
+            input.push(0.);
+        }
+
+        //fruit
+        if self.fruit_vision > 0.1 {
+            for i in 0..self.fruit_vision as usize {
+                for j in 0..self.fruit_vision as usize {
+                    let cell = collisions.fruit_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
+                    for id in &cell.object_ids {
+                        let fruit = fruit.index(*id);
+
+                        let relative_pos_x = fruit.position[0] - body.position[0];
+                        let relative_pos_y = fruit.position[1] - body.position[1];
+                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
+
+                        if dist < closest {
+                            closest = dist;
+                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
+                        }
+                    }
+                }
+            }
+            //always finds angle on rhs, this converts it into the acute angle if it's not already
+            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
+            input.push(angle / PI);
+            input.push(((self.fruit_vision * CELL_SIZE) - closest).max(0.0) / (self.fruit_vision * CELL_SIZE));
         }
         else{
             input.push(0.);
@@ -252,10 +284,11 @@ impl Animals{
         let senses = SensoryInput{
             animal_vision: rng.gen_range(0.0..12.0),
             plant_vision: rng.gen_range(0.0..12.0),
+            fruit_vision: rng.gen_range(0.0..12.0),
             rock_vision: rng.gen_range(0.0..12.0),
         };
 
-        let mut brain = Brain{ network: Network::zero(&[11,22,5])};
+        let mut brain = Brain{ network: Network::zero(&[13,22,5])};
         brain.network.mutate(0.4,0.3);
 
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
@@ -291,9 +324,9 @@ impl Animals{
         });
     }
 
-    pub fn update(&mut self, plants: &mut Plants, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap){
+    pub fn update(&mut self, plants: &mut Plants,fruit: &mut Fruits, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap){
         for i in 0..self.count(){
-            let input = self.animals.index(i).senses.stimulus(&plants.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions,rock_map);
+            let input = self.animals.index(i).senses.stimulus(&plants.bodies,&fruit.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions,rock_map);
 
             let animal = self.animals.index_mut(i);
 
@@ -430,9 +463,11 @@ impl Animals{
     }
 
     fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize){
+        let efficiency = 1.0/(-5.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.16;
+
         let (energy,protein) =
-            ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 10.) * (0.3 + 0.7 * self.animals.index(animal_id).combat_stats.carnivore_factor),
-            (self.animals.index(other_animal_id).resources.protein + self.animals.index(other_animal_id).lean_mass * 10.) * (0.3 + 0.7 * self.animals.index(animal_id).combat_stats.carnivore_factor));
+            ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 10.) * efficiency,
+            (self.animals.index(other_animal_id).resources.protein + self.animals.index(other_animal_id).lean_mass * 10.) * efficiency);
 
         self.animals.index_mut(other_animal_id).resources.energy = 0.;
 
@@ -445,7 +480,13 @@ impl Animals{
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){
-        let efficiency = 1.0 - (0.7 * self.animals[animal_id].combat_stats.carnivore_factor);
+        let efficiency = 1.0/(10.* self.animals[animal_id].combat_stats.carnivore_factor + 1.429) + 0.3;
+
+        self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
+    }
+
+    pub fn handle_fruit_collision(&mut self, animal_id: usize, resources: (f32,f32)){
+        let efficiency = 1.0/(3.* self.animals[animal_id].combat_stats.carnivore_factor -4.1) + 1.243;
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }
 

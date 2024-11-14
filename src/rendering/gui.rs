@@ -432,7 +432,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Spawn rate");
-                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0..=50));
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0.25..=50.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
@@ -474,7 +474,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Spawn rate");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0..=50));
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0.25..=50.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
