@@ -18,6 +18,7 @@ use std::time::SystemTime;
 use sysinfo::System;
 use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+use crate::environment::animal::Animals;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
@@ -41,25 +42,25 @@ pub async fn run() {
     let mut inputs = Inputs::default();
     let mut frames = 0;
     let mut system = System::default();
-    let mut state = State{ menu: true };
+    let mut state = State{ menu: true, load_save: false, new: false };
     let mut camera = Camera{
         position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
         zoom: 0.05,
         ratio: 1.0,
     };
+    let mut collisions = environment::collisions::Collisions::new();
+
     let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
     let mut plants = environment::plants::Plants::genesis();
     let mut fruit = environment::fruit::Fruits::genesis();
     let mut stats = utilities::statistics::Stats::default();
     let mut eggs = environment::eggs::Eggs::default();
-    let mut collisions = environment::collisions::Collisions::new();
     let mut sim_params = utilities::simulation_parameters::SimParams::default();
     let mut species_list = environment::species::SpeciesList::default();
     let mut rocks = RockMap::new();
-    rocks.randomise();
 
-   // let (mut step, mut animals, mut plants, mut eggs, mut collisions, mut species_list, mut stats, mut sim_params, mut rocks) = SaveSystem::load().open();
+
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -69,7 +70,7 @@ pub async fn run() {
             match event {
                 WindowEvent::CloseRequested => ewlt.exit(),
                 WindowEvent::KeyboardInput { event, .. } => {
-                    if event.state == ElementState::Pressed && !event.repeat {
+                    if !state.menu && event.state == ElementState::Pressed && !event.repeat {
                         match event.key_without_modifiers().as_ref() {
                             Key::Character("w") => inputs.up = true,
                             Key::Character("s") => inputs.down = true,
@@ -77,7 +78,16 @@ pub async fn run() {
                             Key::Character("d") => inputs.right = true,
                             Key::Character("=") => inputs.plus = true,
                             Key::Character("-") => inputs.minus = true,
-                            Key::Character("q") => { SaveSystem::save(step, animals.clone(), plants.clone(), eggs.clone(), collisions.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone()); },
+                            Key::Character("q") => {
+                                animals.kill();
+                                plants.kill();
+                                fruit.kill();
+                                SaveSystem::save(step, animals.clone(), plants.clone(), fruit.clone(), eggs.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone());
+
+                                collisions.update_animal_grid(animals.instances().as_slice());
+                                collisions.update_plant_grid(plants.instances());
+                                collisions.update_fruit_grid(fruit.instances());
+                            },
                             _ => (),
                         }
                     }
@@ -120,6 +130,26 @@ pub async fn run() {
                             Err(wgpu::SurfaceError::OutOfMemory) => ewlt.exit(),
                             Err(wgpu::SurfaceError::Timeout) => {},
                         }
+                    }
+                    else if state.load_save {
+                        (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks) = SaveSystem::load().open();
+                        collisions.update_animal_grid(animals.instances().as_slice());
+                        collisions.update_plant_grid(plants.instances());
+                        collisions.update_fruit_grid(fruit.instances());
+                        state.load_save = false;
+                    }
+                    else if state.new {
+                        step = 0;
+                        animals = environment::animal::Animals::genesis();
+                        plants = environment::plants::Plants::genesis();
+                        fruit = environment::fruit::Fruits::genesis();
+                        stats = utilities::statistics::Stats::default();
+                        eggs = environment::eggs::Eggs::default();
+                        sim_params = utilities::simulation_parameters::SimParams::default();
+                        species_list = environment::species::SpeciesList::default();
+                        rocks = RockMap::new();
+                        rocks.randomise();
+                        state.new = false;
                     }
                     else {
                         if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
@@ -177,7 +207,7 @@ pub async fn run() {
 
                         let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 
-                        match renderer.render(&mut stats,&mut sim_params,net) {
+                        match renderer.render(&mut stats,&mut sim_params,net,&mut state) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
 use crate::environment::collisions::Collisions;
 use crate::environment::eggs::Eggs;
+use crate::environment::fruit::Fruits;
 use crate::environment::plants::Plants;
 use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
@@ -19,13 +20,13 @@ impl SaveSystem{
         serde_json::from_str(&data).unwrap()
     }
 
-    pub fn save(step: i32, animals: Animals,plants: Plants,eggs: Eggs, collisions: Collisions,species_list: SpeciesList,stats: Stats,sim_params: SimParams,rock_map: RockMap){
+    pub fn save(step: i32, animals: Animals,plants: Plants, fruits: Fruits,eggs: Eggs,species_list: SpeciesList,stats: Stats,sim_params: SimParams,rock_map: RockMap){
         let save = SimulationSave{
             step,
             animals,
             plants,
+            fruits,
             eggs,
-            collisions,
             species_list,
             stats,
             sim_params,
@@ -43,8 +44,8 @@ pub struct SimulationSave{
     step: i32,
     animals: Animals,
     plants: Plants,
+    fruits: Fruits,
     eggs: Eggs,
-    collisions: Collisions,
     species_list: SpeciesList,
     stats: Stats,
     sim_params: SimParams,
@@ -52,7 +53,7 @@ pub struct SimulationSave{
 }
 
 impl SimulationSave{
-    pub fn open(self) -> (i32,Animals,Plants,Eggs,Collisions,SpeciesList,Stats,SimParams,RockMap){
-        (self.step,self.animals,self.plants,self.eggs,self.collisions,self.species_list,self.stats,self.sim_params,self.rock_map)
+    pub fn open(self) -> (i32,Animals,Plants,Fruits,Eggs,SpeciesList,Stats,SimParams,RockMap){
+        (self.step,self.animals,self.plants,self.fruits,self.eggs,self.species_list,self.stats,self.sim_params,self.rock_map)
     }
 }

@@ -64,7 +64,7 @@ impl Animal{
         new_animal.combat_stats.attack = new_animal.max_stats.attack * 0.5;
         new_animal.body.scale = new_animal.max_stats.size * 0.5;
 
-        new_animal.lean_mass = new_animal.combat_stats.attack + new_animal.combat_stats.speed * 4.0 + new_animal.body.scale * 10.;
+        new_animal.lean_mass = new_animal.combat_stats.attack + new_animal.combat_stats.speed * 5.0 + new_animal.body.scale * 30.;
         new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
 
         new_animal
@@ -288,8 +288,8 @@ impl Animals{
             rock_vision: rng.gen_range(0.0..12.0),
         };
 
-        let mut brain = Brain{ network: Network::zero(&[13,22,5])};
-        brain.network.mutate(0.4,0.3);
+        let mut brain = Brain{ network: Network::zero(&[13,7,7,7,5])};
+        brain.network.mutate(0.5,0.4);
 
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
         let mut body = Instance::new([rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0), rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
@@ -302,7 +302,7 @@ impl Animals{
         let animal = Animal{
             species_id: 0,
             maturity: 0.0,
-            lean_mass: body.scale * 20. + combat_stats.speed * 2.0 + combat_stats.attack,
+            lean_mass: body.scale * 30. + combat_stats.speed * 5.0 + combat_stats.attack,
             hue,
             resources,
             body,
@@ -407,13 +407,13 @@ impl Animals{
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
-            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass*0.1  {
+            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass*0.2  {
                 animal.maturity += 1.;
                 animal.resources.protein -= animal.lean_mass*0.2;
                 animal.combat_stats.attack = animal.max_stats.attack * (0.5 + animal.maturity * 0.05);
                 animal.combat_stats.speed = animal.max_stats.speed * (0.5 + animal.maturity * 0.05);
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);
-                animal.lean_mass = animal.combat_stats.attack + animal.combat_stats.speed * 4.0 + animal.body.scale * 10.;
+                animal.lean_mass = animal.combat_stats.attack + animal.combat_stats.speed * 5.0 + animal.body.scale * 30.;
                 animal.resources.max_protein = animal.body.scale * 400.;
                 animal.resources.max_energy = animal.body.scale * 10000.;
             }
@@ -463,7 +463,7 @@ impl Animals{
     }
 
     fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize){
-        let efficiency = 1.0/(-5.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.16;
+        let efficiency = 1.0/(-3.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.235;
 
         let (energy,protein) =
             ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 10.) * efficiency,
@@ -480,13 +480,13 @@ impl Animals{
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){
-        let efficiency = 1.0/(10.* self.animals[animal_id].combat_stats.carnivore_factor + 1.429) + 0.3;
+        let efficiency = 1.0 - 0.7 * self.animals[animal_id].combat_stats.carnivore_factor;
 
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }
 
     pub fn handle_fruit_collision(&mut self, animal_id: usize, resources: (f32,f32)){
-        let efficiency = 1.0/(3.* self.animals[animal_id].combat_stats.carnivore_factor -4.1) + 1.243;
+        let efficiency = 1.0/(2.* self.animals[animal_id].combat_stats.carnivore_factor -3.5) + 1.285;
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }
 

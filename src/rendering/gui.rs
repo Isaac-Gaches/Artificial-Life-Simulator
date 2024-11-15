@@ -85,14 +85,15 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,Option<&Animal>),
+        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,Option<&Animal>,&mut crate::utilities::state::State),
         stats: &mut Stats,
         sim_params: &mut SimParams,
-        animal: Option<&Animal>
+        animal: Option<&Animal>,
+        state: &mut crate::utilities::state::State,
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,stats,&mut self.toggles,sim_params,animal);
+            run_ui(&self.context,stats,&mut self.toggles,sim_params,animal,state);
         });
 
         self.state
@@ -177,7 +178,7 @@ impl EguiRenderer {
     }
 }
 
-pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: Option<&Animal>) {
+pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: Option<&Animal>, state: &mut crate::utilities::state::State) {
     egui::SidePanel::right("right")
         .resizable(false)
         .default_width(200.)
@@ -235,6 +236,12 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.label("Species");
                 ui.add(egui::DragValue::new(&mut sim_params.highlighted_species).clamp_range(-1..=1000));
             });
+
+            ui.separator();
+
+            if ui.selectable_label(false, RichText::new("Main Menu").heading()).clicked(){
+                state.menu = true;
+            }
         });
 
     if toggles.animal_inspect {
@@ -492,8 +499,13 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State) {
     egui::CentralPanel::default()
         .show(ui,|ui|{
             ui.heading("menu");
-            if ui.selectable_label(state.menu, RichText::new("Run").heading()).clicked(){
+            if ui.selectable_label(false, RichText::new("New").heading()).clicked(){
                 state.menu = !state.menu;
+                state.new = true;
+            }
+            if ui.selectable_label(false, RichText::new("Load").heading()).clicked(){
+                state.menu = !state.menu;
+                state.load_save = true;
             }
         });
 }
