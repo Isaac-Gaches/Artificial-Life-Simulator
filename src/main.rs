@@ -171,7 +171,9 @@ pub async fn run() {
                                     for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
                                         fruit.spawn(&rocks);
                                     }
-                                    animals.spawn();
+                                    if animals.count() < 20{
+                                        animals.spawn();
+                                    }
                                 }
 
                                 if step % 6 == 0 {

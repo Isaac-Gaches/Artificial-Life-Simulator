@@ -120,6 +120,9 @@ impl Resources{
     fn add(&mut self,resources:(f32,f32)){
         self.energy+=resources.0;
         self.protein+=resources.1;
+
+        self.energy = self.max_energy.min(self.energy);
+        self.protein = self.max_protein.min(self.protein);
     }
 }
 
@@ -288,7 +291,7 @@ impl Animals{
             rock_vision: rng.gen_range(0.0..12.0),
         };
 
-        let mut brain = Brain{ network: Network::zero(&[13,7,7,7,5])};
+        let mut brain = Brain{ network: Network::zero(&[13,5])};
         brain.network.mutate(0.5,0.4);
 
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
@@ -399,11 +402,11 @@ impl Animals{
             animal.combat_stats.aggression = response.index(3).min(1.0);
             animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
             animal.resources.energy -=
-                animal.body.scale * 0.25 +
-                response.index(0) * animal.combat_stats.speed * 0.05 +
-                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.05 +
-                0.01 * animal.combat_stats.aggression +
-                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision) * 0.005;
+                animal.body.scale * 0.4 +
+                response.index(0) * animal.combat_stats.speed * 0.15 +
+                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.15 +
+                0.005 * animal.combat_stats.aggression +
+                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision) * 0.002;
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
@@ -475,8 +478,6 @@ impl Animals{
 
         animal.resources.energy += energy;
         animal.resources.protein += protein;
-        animal.resources.energy = animal.resources.max_energy;
-        animal.resources.energy = animal.resources.max_protein;
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){
