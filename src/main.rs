@@ -3,6 +3,7 @@ mod rendering;
 mod utilities;
 mod environment;
 
+use std::ops::Index;
 use rendering::render::Renderer;
 
 use winit::event::WindowEvent;
@@ -19,6 +20,7 @@ use sysinfo::System;
 use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
+use crate::environment::collisions::{CELLS_HEIGHT, DIV};
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
@@ -29,8 +31,8 @@ fn main() {
     pollster::block_on(run());
 }
 
-const WORLD_WIDTH: f32 = 80.0;
-const WORLD_HEIGHT: f32 = 80.0;
+const WORLD_WIDTH: f32 = 120.0;
+const WORLD_HEIGHT: f32 = 120.0;
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
@@ -49,6 +51,8 @@ pub async fn run() {
         ratio: 1.0,
     };
     let mut collisions = environment::collisions::Collisions::new();
+    let mut inspect = None;
+    let mut test = 0.;
 
     let mut step = 0;
     let mut animals = environment::animal::Animals::genesis();
@@ -152,6 +156,14 @@ pub async fn run() {
                         state.new = false;
                     }
                     else {
+                        inspect = if let Some(animal) = animals.animals.iter().find(|animal|{
+                            animal.hue * animal.senses.animal_vision * animal.senses.fruit_vision * animal.senses.plant_vision * animal.senses.rock_vision == test
+                        }){
+                            Some(animal.clone())
+                        } else{
+                            None
+                        };
+
                         if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
                             stats.update_diagnostics(frames,&mut system);
                             frames = 0;
@@ -166,12 +178,12 @@ pub async fn run() {
 
                                 if step % 60 * 4 == 0 {
                                     for _ in 0..(sim_params.plants.spawn_rate*4.0) as u32{
-                                        plants.spawn(&rocks);
+                                        plants.spawn(&rocks,&collisions);
                                     }
                                     for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
-                                        fruit.spawn(&rocks);
+                                        fruit.spawn(&rocks,&collisions);
                                     }
-                                    if animals.count() < 20{
+                                    if animals.count() < 30{
                                         animals.spawn();
                                     }
                                 }
@@ -204,12 +216,26 @@ pub async fn run() {
                             }
                         }
 
+                        if !renderer.egui_context().is_pointer_over_area() {
+                            if inputs.left_mouse {
+                                let pos = camera.screen_to_world_pos(inputs.mouse_pos);
+                                if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * CELLS_HEIGHT + (pos[1] * DIV) as usize].object_ids.last(){
+                                    let animal = animals.animals.index(*i);
+                                    test = animal.hue * animal.senses.animal_vision * animal.senses.fruit_vision * animal.senses.plant_vision * animal.senses.rock_vision;
+                                }
+
+                            }
+                        }
+
                         camera.update(&inputs,&renderer.size());
                         renderer.update(&animals,&plants,&fruit,&eggs,&rocks,camera);
 
-                        let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
+                    /*    if let Some(animal) = &inspect{
+                            camera.position = animal.body.position
+                        }*/
+                       // let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
 
-                        match renderer.render(&mut stats,&mut sim_params,net,&mut state) {
+                        match renderer.render(&mut stats,&mut sim_params,&inspect,&mut state) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);

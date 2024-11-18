@@ -3,6 +3,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::collisions::{CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
+use crate::environment::plants::Plant;
 use crate::environment::rocks::RockMap;
 use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
@@ -48,7 +49,7 @@ impl Fruits {
         });
     }
 
-    pub fn spawn(&mut self,rock_map: &RockMap){
+    pub fn spawn(&mut self,rock_map: &RockMap,collisions: &Collisions){
         for _trials in 0..100{
             let x = rand::thread_rng().gen_range(0.0..WORLD_WIDTH);
             let y = rand::thread_rng().gen_range(0.0..WORLD_HEIGHT);
@@ -66,9 +67,11 @@ impl Fruits {
             }
 
             if spawn {
-                self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
-                self.fruit.push(Fruit { eaten: false });
-                break;
+                if collisions.fruit_grid[(x * DIV) as usize * CELLS_HEIGHT + (y * DIV) as usize].count() < 2{
+                    self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
+                    self.fruit.push(Fruit { eaten: false });
+                    break;
+                }
             }
         }
     }

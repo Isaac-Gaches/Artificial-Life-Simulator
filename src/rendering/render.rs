@@ -422,7 +422,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams,animal: Option<&Animal>,state: &mut State) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams,animal: &Option<Animal>,state: &mut State) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,

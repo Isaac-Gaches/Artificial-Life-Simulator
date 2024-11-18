@@ -64,7 +64,7 @@ impl Animal{
         new_animal.combat_stats.attack = new_animal.max_stats.attack * 0.5;
         new_animal.body.scale = new_animal.max_stats.size * 0.5;
 
-        new_animal.lean_mass = new_animal.combat_stats.attack + new_animal.combat_stats.speed * 5.0 + new_animal.body.scale * 30.;
+        new_animal.lean_mass = new_animal.combat_stats.attack * 5.0 + new_animal.combat_stats.speed * 8.0 + new_animal.body.scale * 30.;
         new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
 
         new_animal
@@ -72,7 +72,7 @@ impl Animal{
     fn internal_inputs(&self, mut input: Vec<f32>) -> Vec<f32>{
         input.push(self.resources.energy/self.resources.max_energy);
         input.push(self.combat_stats.aggression);
-        input.push(self.reproduction_stats.birth_desire);
+      //  input.push(self.reproduction_stats.birth_desire);
 
         input
     }
@@ -90,10 +90,9 @@ pub struct Brain{
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct ReproductionStats{
-    pub asexual_factor: f32,
     pub offspring_investment: f32,
     birth_timer: f32,
-    birth_desire: f32,
+    //pub birth_desire: f32,
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct MaxStats{
@@ -224,13 +223,13 @@ impl SensoryInput{
             input.push(angle / PI);
             input.push(((self.animal_vision * CELL_SIZE) - closest).max(0.0) / (self.animal_vision * CELL_SIZE));
             input.push(carn);
-            input.push(same_species);
+       //     input.push(same_species);
         }
         else{
             input.push(0.);
             input.push(0.);
             input.push(0.);
-            input.push(0.);
+           // input.push(0.);
         }
 
         if self.rock_vision > 0.1 {
@@ -291,21 +290,21 @@ impl Animals{
             rock_vision: rng.gen_range(0.0..12.0),
         };
 
-        let mut brain = Brain{ network: Network::zero(&[13,5])};
+        let mut brain = Brain{ network: Network::zero(&[11,11,4])};
         brain.network.mutate(0.5,0.4);
 
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
         let mut body = Instance::new([rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0), rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let hue = rng.gen_range(0.0..=1.0);
         body.set_hsl(hue,1.0);
-        let resources = Resources{ energy: 500.0, protein: 0.0, max_energy: body.scale * 10000., max_protein: body.scale * 400. };
-        let reproduction_stats = ReproductionStats{ asexual_factor: rng.gen_range(0.0..=1.0), offspring_investment: rng.gen_range(0.0..10.0), birth_timer: 0.0, birth_desire: 0.0 };
+        let resources = Resources{ energy: 2000.0, protein: 0.0, max_energy: body.scale * 20000., max_protein: body.scale * 400. };
+        let reproduction_stats = ReproductionStats{ offspring_investment: rng.gen_range(0.0..10.0), birth_timer: 0.0};
         let combat_stats = CombatStats{ carnivore_factor: rng.gen_range(0.0..=1.0), aggression: 0.0, attack: max_stats.attack * 0.5, speed: max_stats.speed * 0.5, };
 
         let animal = Animal{
             species_id: 0,
             maturity: 0.0,
-            lean_mass: body.scale * 30. + combat_stats.speed * 5.0 + combat_stats.attack,
+            lean_mass: body.scale * 30. + combat_stats.speed * 8.0 + combat_stats.attack * 5.0,
             hue,
             resources,
             body,
@@ -337,7 +336,7 @@ impl Animals{
 
             animal.brain.network.input(input);
 
-            if animal.reproduction_stats.birth_desire > 0. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (animal.reproduction_stats.offspring_investment * 20.) + 100. && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment{
+            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (animal.reproduction_stats.offspring_investment * 20.) + animal.resources.max_energy * 0.5 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment{
                 animal.reproduction_stats.birth_timer = 10. + animal.reproduction_stats.offspring_investment * 4.;
                 animal.resources.energy -= 100. + (animal.reproduction_stats.offspring_investment * 20.);
                 animal.resources.protein -= animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment;
@@ -400,13 +399,14 @@ impl Animals{
             animal.body.rotation += response.index(1).min(1.0) * 0.04 * animal.combat_stats.speed;
             animal.body.rotation -= response.index(2).min(1.0) * 0.04 * animal.combat_stats.speed;
             animal.combat_stats.aggression = response.index(3).min(1.0);
-            animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
+           // animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
+
             animal.resources.energy -=
-                animal.body.scale * 0.4 +
-                response.index(0) * animal.combat_stats.speed * 0.15 +
-                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.15 +
-                0.005 * animal.combat_stats.aggression +
-                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision) * 0.002;
+                animal.body.scale * 0.5 +
+                response.index(0) * animal.combat_stats.speed * 0.3 +
+                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.3 +
+                0.1 * animal.combat_stats.aggression * animal.combat_stats.attack +
+                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.001;
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
@@ -416,9 +416,9 @@ impl Animals{
                 animal.combat_stats.attack = animal.max_stats.attack * (0.5 + animal.maturity * 0.05);
                 animal.combat_stats.speed = animal.max_stats.speed * (0.5 + animal.maturity * 0.05);
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);
-                animal.lean_mass = animal.combat_stats.attack + animal.combat_stats.speed * 5.0 + animal.body.scale * 30.;
+                animal.lean_mass = animal.combat_stats.attack * 5.0 + animal.combat_stats.speed * 8.0 + animal.body.scale * 30.;
                 animal.resources.max_protein = animal.body.scale * 400.;
-                animal.resources.max_energy = animal.body.scale * 10000.;
+                animal.resources.max_energy = animal.body.scale *20000.;
             }
 
             if animal.body.position[0] > WORLD_WIDTH{

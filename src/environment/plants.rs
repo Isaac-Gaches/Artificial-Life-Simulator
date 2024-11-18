@@ -48,7 +48,7 @@ impl Plants {
         });
     }
 
-    pub fn spawn(&mut self,rock_map: &RockMap){
+    pub fn spawn(&mut self,rock_map: &RockMap, collisions: &Collisions){
         for _trials in 0..100{
             let x = rand::thread_rng().gen_range(0.0..WORLD_WIDTH);
             let y = rand::thread_rng().gen_range(0.0..WORLD_HEIGHT);
@@ -66,9 +66,11 @@ impl Plants {
             }
 
             if spawn {
-                self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
-                self.plants.push(Plant { eaten: false });
-                break;
+                if collisions.plants_grid[(x * DIV) as usize * CELLS_HEIGHT + (y * DIV) as usize].count() < 2{
+                    self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
+                    self.plants.push(Plant { eaten: false });
+                    break;
+                }
             }
         }
     }

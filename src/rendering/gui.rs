@@ -85,10 +85,10 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,Option<&Animal>,&mut crate::utilities::state::State),
+        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,&Option<Animal>,&mut crate::utilities::state::State),
         stats: &mut Stats,
         sim_params: &mut SimParams,
-        animal: Option<&Animal>,
+        animal: &Option<Animal>,
         state: &mut crate::utilities::state::State,
     ) {
         let raw_input = self.state.take_egui_input(window);
@@ -178,7 +178,7 @@ impl EguiRenderer {
     }
 }
 
-pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: Option<&Animal>, state: &mut crate::utilities::state::State) {
+pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: &Option<Animal>, state: &mut crate::utilities::state::State) {
     egui::SidePanel::right("right")
         .resizable(false)
         .default_width(200.)
@@ -215,11 +215,11 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             }
             ui.horizontal(|ui| {
                 ui.label("Stats Refresh Time");
-                ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=300));
+                ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
             });
             ui.horizontal(|ui|{
                 ui.label("Steps Per Frame");
-                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=100));
+                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=200));
             });
             ui.horizontal(|ui|{
                 ui.label("Build Mode");
@@ -325,26 +325,29 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                             ui.label(RichText::new(format!("Species: {}", animal.species_id)));
                             ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
                             ui.label(RichText::new(format!("Age (min): {:.2}", animal.age/60.)));
+                            ui.label(RichText::new(format!("Mass: {:.2}", animal.lean_mass)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Energy: {:.2}", animal.resources.energy)));
                             ui.label(RichText::new(format!("Protein: {:.2}", animal.resources.protein)));
-                            ui.label(RichText::new(format!("Mass: {:.2}", animal.lean_mass)));
-                        });
-                        ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
                             ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
+                        });
+                        ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Animal vision: {:.2}", animal.senses.animal_vision)));
+                            ui.label(RichText::new(format!("Plant vision: {:.2}", animal.senses.plant_vision)));
+                            ui.label(RichText::new(format!("Fruit vision: {:.2}", animal.senses.fruit_vision)));
+                            ui.label(RichText::new(format!("Rock vision: {:.2}", animal.senses.rock_vision)));
+                        });
+                        ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Offspring Invest: {:.2}", animal.reproduction_stats.offspring_investment)));
+                            ui.label(RichText::new(format!("Aggression: {:.2}", animal.combat_stats.aggression)));
+                         //   ui.label(RichText::new(format!("Libido: {:.2}", animal.reproduction_stats.birth_desire)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Speed: {:.2}", animal.combat_stats.speed)));
                             ui.label(RichText::new(format!("Size: {:.2}", animal.body.scale)));
                             ui.label(RichText::new(format!("Hue: {:.2}", animal.hue)));
-                        });
-                        ui.vertical(|ui|{
-                            ui.label(RichText::new(format!("Animal vision: {:.2}", animal.senses.animal_vision)));
-                            ui.label(RichText::new(format!("Plant vision: {:.2}", animal.senses.plant_vision)));
-                            ui.label(RichText::new(format!("Rock vision: {:.2}", animal.senses.rock_vision)));
                         });
                     });
                 }
