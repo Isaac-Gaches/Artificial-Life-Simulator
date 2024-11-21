@@ -1,8 +1,7 @@
 use std::ops::{Index, IndexMut};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use crate::{WORLD_HEIGHT, WORLD_WIDTH};
-use crate::environment::collisions::{CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
+use crate::environment::collisions::{Collisions, DIV};
 use crate::environment::plants::Plant;
 use crate::environment::rocks::RockMap;
 use crate::rendering::instance::Instance;
@@ -49,16 +48,16 @@ impl Fruits {
         });
     }
 
-    pub fn spawn(&mut self,rock_map: &RockMap,collisions: &Collisions){
+    pub fn spawn(&mut self,rock_map: &RockMap,collisions: &Collisions,sim_params: &SimParams){
         for _trials in 0..100{
-            let x = rand::thread_rng().gen_range(0.0..WORLD_WIDTH);
-            let y = rand::thread_rng().gen_range(0.0..WORLD_HEIGHT);
+            let x = rand::thread_rng().gen_range(0.0..sim_params.world.width);
+            let y = rand::thread_rng().gen_range(0.0..sim_params.world.height);
 
             let mut spawn = true;
 
             'outer: for m in -1..=1{
                 for n in -1..=1{
-                    let i = (x * DIV + m as f32) as usize * CELLS_HEIGHT + (y * DIV + n as f32) as usize;
+                    let i = (x * DIV + m as f32) as usize * collisions.cells_height + (y * DIV + n as f32) as usize;
                     if rock_map.rocks[i] > 0 {
                         spawn = false;
                         break 'outer;
@@ -67,7 +66,7 @@ impl Fruits {
             }
 
             if spawn {
-                if collisions.fruit_grid[(x * DIV) as usize * CELLS_HEIGHT + (y * DIV) as usize].count() < 2{
+                if collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2{
                     self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
                     self.fruit.push(Fruit { eaten: false });
                     break;
@@ -81,7 +80,7 @@ impl Fruits {
             let plant = &self.bodies[i];
             'outer: for m in -1..=1{
                 for n in -1..=1{
-                    let r = (plant.position[0] * DIV + m as f32) as usize * CELLS_HEIGHT + (plant.position[1] * DIV + n as f32) as usize;
+                    let r = (plant.position[0] * DIV + m as f32) as usize * rock_map.height + (plant.position[1] * DIV + n as f32) as usize;
                     if rock_map.rocks[r] > 0 {
                         self.remove(i);
                         break 'outer;

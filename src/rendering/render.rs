@@ -514,7 +514,7 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn main_menu(&mut self, state: &mut State) -> Result<(), wgpu::SurfaceError> {
+    pub fn main_menu(&mut self, state: &mut State,sim_params: &mut SimParams) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
 
         let view = output.texture.create_view(&TextureViewDescriptor {
@@ -546,7 +546,8 @@ impl Renderer {
             &view,
             screen_descriptor,
             main_menu_gui,
-            state
+            state,
+            sim_params
         );
 
         self.queue.submit(iter::once(encoder.finish()));

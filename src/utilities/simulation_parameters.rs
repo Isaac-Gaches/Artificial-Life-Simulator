@@ -5,8 +5,17 @@ pub struct SimParams{
     pub plants: PlantSettings,
     pub fruit: FruitSettings,
     pub animals: AnimalSettings,
-    pub steps_per_frame: i32,
+    pub build: BuildSettings,
+    pub simulation: SimulationSettings,
+    pub world: WorldSettings,
     pub highlighted_species: i32,
+}
+#[derive(Serialize,Deserialize,Clone)]
+pub struct SimulationSettings {
+    pub steps_per_frame: i32,
+}
+#[derive(Serialize,Deserialize,Clone)]
+pub struct BuildSettings {
     pub pen_size: i32,
     pub build_mode: bool
 }
@@ -29,10 +38,14 @@ pub struct AnimalSettings{
     pub physical_mutation_rate: f32,
     pub physical_mutation_strength: f32,
 }
+#[derive(Serialize,Deserialize,Clone)]
+pub struct WorldSettings{
+    pub width: f32,
+    pub height: f32,
+}
 impl Default for SimParams{
     fn default() -> Self {
         Self{
-            steps_per_frame: 1,
             plants: PlantSettings {
                 spawn_rate: 4.,
                 energy: 80.0,
@@ -49,9 +62,18 @@ impl Default for SimParams{
                 physical_mutation_rate: 10.0,
                 physical_mutation_strength: 15.0,
             },
+            build: BuildSettings {
+                pen_size: 0,
+                build_mode: false
+            },
+            simulation: SimulationSettings {
+                steps_per_frame: 0
+            },
+            world: WorldSettings {
+                width: 120.0,
+                height: 120.0
+            },
             highlighted_species: -1,
-            pen_size: 0,
-            build_mode: false,
         }
     }
 }

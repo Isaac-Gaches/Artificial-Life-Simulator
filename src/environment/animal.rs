@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::environment::eggs::Eggs;
 use crate::environment::neural_network::Network;
 use crate::environment::plants::Plants;
-use crate::{WORLD_HEIGHT, WORLD_WIDTH};
-use crate::environment::collisions::{CELL_SIZE, CELLS_HEIGHT, CELLS_WIDTH, Collisions, DIV};
+use crate::environment::collisions::{CELL_SIZE, Collisions, DIV};
 use crate::environment::fruit::Fruits;
 use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
+use crate::environment::vision::SensoryInput;
 use crate::rendering::instance::Instance;
 
 #[derive(Clone,Serialize,Deserialize)]
@@ -107,13 +107,6 @@ pub struct Resources{
     max_energy: f32,
     max_protein: f32,
 }
-#[derive(Clone,Serialize,Deserialize)]
-pub struct SensoryInput{
-    pub animal_vision: f32,
-    pub plant_vision: f32,
-    pub fruit_vision: f32,
-    pub rock_vision: f32,
-}
 
 impl Resources{
     fn add(&mut self,resources:(f32,f32)){
@@ -125,150 +118,6 @@ impl Resources{
     }
 }
 
-impl SensoryInput{
-    fn stimulus(&self, plants: &[Instance],fruit: &[Instance], body: &Instance, animals: &[Animal],animal: &Animal,collisions: &Collisions, rock_map: &RockMap) -> Vec<f32>{
-        let mut input = Vec::new();
-
-        let mut closest = f32::MAX;
-        let mut angle = 0.;
-
-        let x = (body.position[0] * DIV) as usize;
-        let y = (body.position[1] * DIV) as usize;
-
-        if self.plant_vision > 0.1 {
-            for i in 0..self.plant_vision as usize {
-                for j in 0..self.plant_vision as usize {
-                    let cell = collisions.plants_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
-                    for id in &cell.object_ids {
-                        let plant = plants.index(*id);
-
-                        let relative_pos_x = plant.position[0] - body.position[0];
-                        let relative_pos_y = plant.position[1] - body.position[1];
-                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
-
-                        if dist < closest {
-                            closest = dist;
-                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
-                        }
-                    }
-                }
-            }
-            //always finds angle on rhs, this converts it into the acute angle if it's not already
-            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-            input.push(angle / PI);
-            input.push(((self.plant_vision * CELL_SIZE) - closest).max(0.0) / (self.plant_vision * CELL_SIZE));
-        }
-        else{
-            input.push(0.);
-            input.push(0.);
-        }
-
-        //fruit
-        if self.fruit_vision > 0.1 {
-            for i in 0..self.fruit_vision as usize {
-                for j in 0..self.fruit_vision as usize {
-                    let cell = collisions.fruit_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
-                    for id in &cell.object_ids {
-                        let fruit = fruit.index(*id);
-
-                        let relative_pos_x = fruit.position[0] - body.position[0];
-                        let relative_pos_y = fruit.position[1] - body.position[1];
-                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
-
-                        if dist < closest {
-                            closest = dist;
-                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
-                        }
-                    }
-                }
-            }
-            //always finds angle on rhs, this converts it into the acute angle if it's not already
-            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-            input.push(angle / PI);
-            input.push(((self.fruit_vision * CELL_SIZE) - closest).max(0.0) / (self.fruit_vision * CELL_SIZE));
-        }
-        else{
-            input.push(0.);
-            input.push(0.);
-        }
-
-        if self.animal_vision > 0.1 {
-            let mut carn: f32 = 0.;
-            let mut same_species = 0.;
-
-            closest = f32::MAX;
-            angle = 0.;
-
-            for i in 0..self.animal_vision as usize {
-                for j in 0..self.animal_vision as usize {
-                    let cell = collisions.animals_grid.index((x + i).saturating_sub(3).min(CELLS_WIDTH - 1) * CELLS_HEIGHT + (y + j).saturating_sub(3).min(CELLS_HEIGHT - 1));
-                    for id in &cell.object_ids {
-                        let other = animals.index(*id);
-
-                        let relative_pos_x = other.body.position[0] - body.position[0];
-                        let relative_pos_y = other.body.position[1] - body.position[1];
-                        let dist = relative_pos_x.abs() + relative_pos_y.abs();
-
-                        if dist < closest && dist > 0. {
-                            closest = dist;
-                            angle = relative_pos_y.atan2(relative_pos_x) - body.rotation;
-                            carn = other.combat_stats.carnivore_factor;
-                            same_species = if animal.species_id == other.species_id { -1. } else { 1.0 };
-                        }
-                    }
-                }
-            }
-
-            angle = if angle < -PI { angle + TAU } else if angle > PI { TAU - angle } else { angle };
-            input.push(angle / PI);
-            input.push(((self.animal_vision * CELL_SIZE) - closest).max(0.0) / (self.animal_vision * CELL_SIZE));
-            input.push(carn);
-       //     input.push(same_species);
-        }
-        else{
-            input.push(0.);
-            input.push(0.);
-            input.push(0.);
-           // input.push(0.);
-        }
-
-        if self.rock_vision > 0.1 {
-            let mut ray1 = animal.body.position;
-            let mut dist1 = 0.;
-
-            let mut ray2 = animal.body.position;
-            let mut dist2 = 0.;
-
-            for i in 0..(self.rock_vision * 5.) as usize {
-                if rock_map.rocks[(ray1[0] * DIV) as usize * CELLS_HEIGHT + (ray1[1] * DIV) as usize] > 0 {
-                    dist1 = i as f32 * CELL_SIZE * 0.2;
-                    break
-                }
-
-                ray1[0] += (animal.body.rotation - PI * 0.125).cos() * CELL_SIZE * 0.2;
-                ray1[1] += (animal.body.rotation - PI * 0.125).sin() * CELL_SIZE * 0.2;
-            }
-            for i in 0..(self.rock_vision * 5.) as usize {
-                if rock_map.rocks[(ray2[0] * DIV) as usize * CELLS_HEIGHT + (ray2[1] * DIV) as usize] > 0 {
-                    dist2 = i as f32 * CELL_SIZE * 0.2;
-                    break
-                }
-
-                ray2[0] += (animal.body.rotation + PI * 0.125).cos() * CELL_SIZE * 0.2;
-                ray2[1] += (animal.body.rotation + PI * 0.125).sin() * CELL_SIZE * 0.2;
-            }
-
-            input.push((dist1) / (self.rock_vision * CELL_SIZE));
-            input.push((dist2) / (self.rock_vision * CELL_SIZE));
-        }
-        else {
-            input.push(0.);
-            input.push(0.);
-        }
-
-        input
-    }
-}
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Animals{
     pub animals: Vec<Animal>
@@ -280,7 +129,7 @@ impl Animals{
            animals: vec![],
        }
     }
-    pub fn spawn(&mut self){
+    pub fn spawn(&mut self,sim_params: &SimParams){
         let mut rng = rand::thread_rng();
 
         let senses = SensoryInput{
@@ -294,7 +143,7 @@ impl Animals{
         brain.network.mutate(0.5,0.4);
 
         let max_stats = MaxStats{ speed: rng.gen_range(1.0..4.0), size: rng.gen_range(0.16..0.5), attack: rng.gen_range(0.0..10.)};
-        let mut body = Instance::new([rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0), rng.gen_range(CELL_SIZE*2.0..WORLD_HEIGHT-CELL_SIZE*2.0)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
+        let mut body = Instance::new([rng.gen_range(CELL_SIZE*2.0..sim_params.world.width -CELL_SIZE*2.0), rng.gen_range(CELL_SIZE*2.0..sim_params.world.height -CELL_SIZE*2.0)],[0.0,0.0,0.0], rng.gen_range(-PI..PI),max_stats.size * 0.5);
         let hue = rng.gen_range(0.0..=1.0);
         body.set_hsl(hue,1.0);
         let resources = Resources{ energy: 2000.0, protein: 0.0, max_energy: body.scale * 20000., max_protein: body.scale * 400. };
@@ -383,7 +232,7 @@ impl Animals{
             let start = animal.body.position[0];
             animal.body.position[0] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.cos() * animal.combat_stats.speed;
 
-            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
+            let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
             if arc.rocks[i] > 0{
                 animal.body.position[0] = start;
             }
@@ -391,7 +240,7 @@ impl Animals{
             let start = animal.body.position[1];
             animal.body.position[1] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.sin() * animal.combat_stats.speed;
 
-            let i = (animal.body.position[0] * DIV) as usize * CELLS_HEIGHT + (animal.body.position[1] * DIV) as usize;
+            let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
             if arc.rocks[i] > 0{
                 animal.body.position[1] = start;
             }
@@ -421,17 +270,17 @@ impl Animals{
                 animal.resources.max_energy = animal.body.scale *20000.;
             }
 
-            if animal.body.position[0] > WORLD_WIDTH{
+            if animal.body.position[0] > sim_params.world.width{
                 animal.body.position[0] = 0.0;
             }
             else if animal.body.position[0] < 0.0 {
-                animal.body.position[0] = WORLD_WIDTH;
+                animal.body.position[0] = sim_params.world.width;
             }
-            if animal.body.position[1] > WORLD_HEIGHT{
+            if animal.body.position[1] > sim_params.world.height{
                 animal.body.position[1] = 0.0;
             }
             else if animal.body.position[1] < 0.0 {
-                animal.body.position[1] = WORLD_HEIGHT;
+                animal.body.position[1] = sim_params.world.height;
             }
 
             if animal.body.rotation > PI{

@@ -20,7 +20,7 @@ use sysinfo::System;
 use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
-use crate::environment::collisions::{CELLS_HEIGHT, DIV};
+use crate::environment::collisions::{DIV};
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
@@ -31,14 +31,21 @@ fn main() {
     pollster::block_on(run());
 }
 
-const WORLD_WIDTH: f32 = 120.0;
-const WORLD_HEIGHT: f32 = 120.0;
+//const WORLD_WIDTH: f32 = 120.0;
+//const WORLD_HEIGHT: f32 = 120.0;
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
     let mut renderer = Renderer::new(window).await;
-
+    let mut step = 0;
+    let mut animals = Animals::genesis();
+    let mut plants = environment::plants::Plants::genesis();
+    let mut fruit = environment::fruit::Fruits::genesis();
+    let mut stats = utilities::statistics::Stats::default();
+    let mut eggs = environment::eggs::Eggs::default();
+    let mut sim_params = utilities::simulation_parameters::SimParams::default();
+    let mut species_list = environment::species::SpeciesList::default();
     let mut graph_timer = SystemTime::now();
     let mut diagnostic_timer = SystemTime::now();
     let mut inputs = Inputs::default();
@@ -46,25 +53,14 @@ pub async fn run() {
     let mut system = System::default();
     let mut state = State{ menu: true, load_save: false, new: false };
     let mut camera = Camera{
-        position: [WORLD_WIDTH/2.0,WORLD_HEIGHT/2.0],
+        position: [sim_params.world.width/2.0,sim_params.world.height/2.0],
         zoom: 0.05,
         ratio: 1.0,
     };
-    let mut collisions = environment::collisions::Collisions::new();
+    let mut collisions = environment::collisions::Collisions::new(&sim_params);
     let mut inspect = None;
     let mut test = 0.;
-
-    let mut step = 0;
-    let mut animals = environment::animal::Animals::genesis();
-    let mut plants = environment::plants::Plants::genesis();
-    let mut fruit = environment::fruit::Fruits::genesis();
-    let mut stats = utilities::statistics::Stats::default();
-    let mut eggs = environment::eggs::Eggs::default();
-    let mut sim_params = utilities::simulation_parameters::SimParams::default();
-    let mut species_list = environment::species::SpeciesList::default();
-    let mut rocks = RockMap::new();
-
-
+    let mut rocks = RockMap::new(&collisions);
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -126,7 +122,7 @@ pub async fn run() {
                 }
                 WindowEvent::RedrawRequested => {
                     if state.menu{
-                        match renderer.main_menu(&mut state) {
+                        match renderer.main_menu(&mut state,&mut sim_params) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);
@@ -137,22 +133,29 @@ pub async fn run() {
                     }
                     else if state.load_save {
                         (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks) = SaveSystem::load().open();
+                        collisions = environment::collisions::Collisions::new(&sim_params);
                         collisions.update_animal_grid(animals.instances().as_slice());
                         collisions.update_plant_grid(plants.instances());
                         collisions.update_fruit_grid(fruit.instances());
                         state.load_save = false;
                     }
                     else if state.new {
+                        let x = sim_params.world.width;
+                        sim_params = utilities::simulation_parameters::SimParams::default();
+                        sim_params.world.width = x;
+                        sim_params.world.height = x;
+                        camera.position = [sim_params.world.width/2.0,sim_params.world.height/2.0];
+                        collisions = environment::collisions::Collisions::new(&sim_params);
                         step = 0;
-                        animals = environment::animal::Animals::genesis();
+                        animals = Animals::genesis();
                         plants = environment::plants::Plants::genesis();
                         fruit = environment::fruit::Fruits::genesis();
                         stats = utilities::statistics::Stats::default();
                         eggs = environment::eggs::Eggs::default();
-                        sim_params = utilities::simulation_parameters::SimParams::default();
                         species_list = environment::species::SpeciesList::default();
-                        rocks = RockMap::new();
+                        rocks = RockMap::new(&collisions);
                         rocks.randomise();
+
                         state.new = false;
                     }
                     else {
@@ -169,22 +172,22 @@ pub async fn run() {
                             frames = 0;
                             diagnostic_timer = SystemTime::now();
                         }
-                        if !sim_params.build_mode {
-                            for _ in 0..sim_params.steps_per_frame {
-                                if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.steps_per_frame as u128 {
+                        if !sim_params.build.build_mode {
+                            for _ in 0..sim_params.simulation.steps_per_frame {
+                                if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.simulation.steps_per_frame as u128 {
                                     stats.update_graphs(animals.count(), plants.count(), &animals.animals);
                                     graph_timer = SystemTime::now();
                                 }
 
                                 if step % 60 * 4 == 0 {
                                     for _ in 0..(sim_params.plants.spawn_rate*4.0) as u32{
-                                        plants.spawn(&rocks,&collisions);
+                                        plants.spawn(&rocks,&collisions,&sim_params);
                                     }
                                     for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
-                                        fruit.spawn(&rocks,&collisions);
+                                        fruit.spawn(&rocks,&collisions,&sim_params);
                                     }
                                     if animals.count() < 30{
-                                        animals.spawn();
+                                        animals.spawn(&sim_params);
                                     }
                                 }
 
@@ -206,20 +209,20 @@ pub async fn run() {
                         }
                         else if !renderer.egui_context().is_pointer_over_area() {
                             if inputs.left_mouse {
-                                rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+                                rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size);
                                 plants.remove_plants_in_walls(&rocks);
                                 fruit.remove_plants_in_walls(&rocks);
                                 collisions.update_plant_grid(plants.instances());
                                 collisions.update_fruit_grid(fruit.instances());
                             } else if inputs.right_mouse {
-                                rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.pen_size);
+                                rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size);
                             }
                         }
 
                         if !renderer.egui_context().is_pointer_over_area() {
                             if inputs.left_mouse {
                                 let pos = camera.screen_to_world_pos(inputs.mouse_pos);
-                                if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * CELLS_HEIGHT + (pos[1] * DIV) as usize].object_ids.last(){
+                                if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last(){
                                     let animal = animals.animals.index(*i);
                                     test = animal.hue * animal.senses.animal_vision * animal.senses.fruit_vision * animal.senses.plant_vision * animal.senses.rock_vision;
                                 }

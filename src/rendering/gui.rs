@@ -14,9 +14,12 @@ use crate::utilities::statistics::Stats;
 #[derive(Default)]
 pub struct Toggles{
     population_graphs: bool,
-    plant_settings: bool,
-    fruit_settings: bool,
+    //plant_settings: bool,
+    //fruit_settings: bool,
+    food_settings:bool,
     animal_settings: bool,
+    simulation_settings: bool,
+    build_settings: bool,
     animals: bool,
     herbivores: bool,
     omnivores: bool,
@@ -136,12 +139,13 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State),
-        state: &mut crate::utilities::state::State
+        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State,&mut SimParams),
+        state: &mut crate::utilities::state::State,
+        sim_params: &mut SimParams
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,state);
+            run_ui(&self.context,state,sim_params);
         });
 
         self.state
@@ -185,6 +189,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
         .show(ui,|ui|{
             ui.heading("Statistics");
             ui.separator();
+
             if ui.selectable_label(toggles.animal_inspect, RichText::new("Inspector").heading()).clicked(){
                 toggles.animal_inspect = !toggles.animal_inspect;
             }
@@ -199,44 +204,24 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             }
 
             ui.separator();
-
             ui.heading("Settings");
-
             ui.separator();
 
-            if ui.selectable_label(toggles.plant_settings, RichText::new("Plant Settings").heading()).clicked(){
-                toggles.plant_settings = !toggles.plant_settings;
-            }
-            if ui.selectable_label(toggles.fruit_settings, RichText::new("Fruit Settings").heading()).clicked(){
-                toggles.fruit_settings = !toggles.fruit_settings;
+            if ui.selectable_label(toggles.food_settings, RichText::new("Food Settings").heading()).clicked(){
+                toggles.food_settings = !toggles.food_settings;
             }
             if ui.selectable_label(toggles.animal_settings, RichText::new("Animal Settings").heading()).clicked(){
                 toggles.animal_settings = !toggles.animal_settings;
             }
-            ui.horizontal(|ui| {
-                ui.label("Stats Refresh Time");
-                ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Steps Per Frame");
-                ui.add(egui::DragValue::new(&mut sim_params.steps_per_frame).clamp_range(0..=200));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Build Mode");
-                ui.add(egui::Checkbox::new(&mut sim_params.build_mode,""));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Pen Size");
-                ui.add(egui::DragValue::new(&mut sim_params.pen_size).clamp_range(0..=6));
-            });
+            if ui.selectable_label(toggles.build_settings, RichText::new("Build Settings").heading()).clicked(){
+                toggles.build_settings = !toggles.build_settings;
+            }
+            if ui.selectable_label(toggles.simulation_settings, RichText::new("Simulation Settings").heading()).clicked(){
+                toggles.simulation_settings = !toggles.simulation_settings;
+            }
 
             ui.separator();
-
-            ui.horizontal(|ui|{
-                ui.label("Species");
-                ui.add(egui::DragValue::new(&mut sim_params.highlighted_species).clamp_range(-1..=1000));
-            });
-
+            ui.heading("System");
             ui.separator();
 
             if ui.selectable_label(false, RichText::new("Main Menu").heading()).clicked(){
@@ -435,11 +420,15 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
             });
     }
-    if toggles.plant_settings {
-        egui::Window::new("Plant Settings")
+    if toggles.food_settings {
+        egui::Window::new("Food Settings")
             .resizable(false)
+            .default_width(0.0)
             .collapsible(false)
             .show(ui, |ui| {
+                ui.heading("Plants");
+                ui.separator();
+
                 ui.horizontal(|ui| {
                     ui.label("Spawn rate");
                     ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0.25..=50.0));
@@ -451,6 +440,23 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.horizontal(|ui| {
                     ui.label("Protein");
                     ui.add(egui::DragValue::new(&mut sim_params.plants.protein).clamp_range(0.0..=10.));
+                });
+
+                ui.separator();
+                ui.heading("Fruit");
+                ui.separator();
+
+                ui.horizontal(|ui| {
+                    ui.label("Spawn rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0.25..=50.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Energy");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.energy).clamp_range(0.0..=500.));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Protein");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.protein).clamp_range(0.0..=10.));
                 });
             });
     }
@@ -477,28 +483,39 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
             });
     }
-    if toggles.fruit_settings {
-        egui::Window::new("Fruit Settings")
+    if toggles.build_settings {
+        egui::Window::new("Build Settings")
             .resizable(false)
             .collapsible(false)
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Spawn rate");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0.25..=50.0));
+                ui.horizontal(|ui|{
+                    ui.label("Build Mode");
+                    ui.add(egui::Checkbox::new(&mut sim_params.build.build_mode,""));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Pen Size");
+                    ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
+                });
+            });
+    }
+    if toggles.simulation_settings {
+        egui::Window::new("Simulation Settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui|{
+                    ui.label("Speed");
+                    ui.add(egui::DragValue::new(&mut sim_params.simulation.steps_per_frame).clamp_range(0..=200));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Energy");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.energy).clamp_range(0.0..=500.));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Protein");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.protein).clamp_range(0.0..=10.));
+                    ui.label("Stats Refresh Time");
+                    ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
                 });
             });
     }
 }
 
-pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State) {
+pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams) {
     egui::CentralPanel::default()
         .show(ui,|ui|{
             ui.heading("menu");
@@ -510,5 +527,9 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State) {
                 state.menu = !state.menu;
                 state.load_save = true;
             }
+            ui.horizontal(|ui|{
+                ui.label("World Size");
+                ui.add(egui::DragValue::new(&mut sim_params.world.width));
+            });
         });
 }

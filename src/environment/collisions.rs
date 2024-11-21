@@ -2,13 +2,13 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
 use crate::environment::plants::Plants;
-use crate::{WORLD_HEIGHT, WORLD_WIDTH};
+//use crate::{WORLD_HEIGHT, WORLD_WIDTH};
 use crate::environment::fruit::Fruits;
 use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
 
-pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize;
-pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize;
+//pub const CELLS_HEIGHT: usize = (WORLD_HEIGHT/CELL_SIZE) as usize;
+//pub const CELLS_WIDTH: usize = (WORLD_WIDTH/CELL_SIZE) as usize;
 pub const CELL_SIZE: f32 = 0.4;
 pub const DIV: f32 = 1.0/CELL_SIZE;
 
@@ -17,6 +17,8 @@ pub struct Collisions{
     pub animals_grid: Vec<Cell>,
     pub plants_grid: Vec<Cell>,
     pub fruit_grid: Vec<Cell>,
+    pub cells_height: usize,
+    pub cells_width: usize,
 }
 #[derive(Default,Clone,Serialize,Deserialize)]
 pub struct Cell{
@@ -37,18 +39,22 @@ impl Cell{
     }
 }
 impl Collisions{
-    pub fn new()-> Self{
+    pub fn new(sim_params: &SimParams)-> Self{
+        let cells_height= (sim_params.world.height/CELL_SIZE) as usize;
+        let cells_width= (sim_params.world.width/CELL_SIZE) as usize;
         Self{
-            animals_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
-            plants_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
-            fruit_grid: vec![Cell::default();CELLS_HEIGHT*CELLS_WIDTH],
+            animals_grid: vec![Cell::default();cells_height*cells_width],
+            plants_grid: vec![Cell::default();cells_height*cells_width],
+            fruit_grid: vec![Cell::default();cells_height*cells_width],
+            cells_width,
+            cells_height,
         }
     }
     pub fn update_animal_grid(&mut self,objects: &[Instance]){
         self.animals_grid.par_iter_mut().for_each(|cell| cell.clear());
 
         objects.iter().enumerate().for_each(|(id,instance)|{
-            let i = (instance.position[0] * DIV ) as usize * CELLS_HEIGHT + (instance.position[1] * DIV ) as usize;
+            let i = (instance.position[0] * DIV ) as usize * self.cells_height + (instance.position[1] * DIV ) as usize;
             self.animals_grid[i].add(id);
         });
     }
@@ -56,7 +62,7 @@ impl Collisions{
         self.plants_grid.par_iter_mut().for_each(|cell| cell.clear());
 
         objects.iter().enumerate().for_each(|(id,instance)|{
-            let i = (instance.position[0] * DIV ) as usize * CELLS_HEIGHT + (instance.position[1] * DIV ) as usize;
+            let i = (instance.position[0] * DIV ) as usize * self.cells_height + (instance.position[1] * DIV ) as usize;
             self.plants_grid[i].add(id);
         });
     }
@@ -64,21 +70,21 @@ impl Collisions{
         self.fruit_grid.par_iter_mut().for_each(|cell| cell.clear());
 
         objects.iter().enumerate().for_each(|(id,instance)|{
-            let i = (instance.position[0] * DIV ) as usize * CELLS_HEIGHT + (instance.position[1] * DIV ) as usize;
+            let i = (instance.position[0] * DIV ) as usize * self.cells_height + (instance.position[1] * DIV ) as usize;
             self.fruit_grid[i].add(id);
         });
     }
     pub fn handle_collisions(&mut self, animals: &mut Animals, plants: &mut Plants,fruit: &mut Fruits,sim_params: &SimParams){
-        for x in 0..CELLS_WIDTH{
-            for y in 0..CELLS_HEIGHT{
-                for z in 0..self.animals_grid[x * CELLS_HEIGHT + y].count(){
-                    let animal_id = self.animals_grid[x * CELLS_HEIGHT + y].index(z);
+        for x in 0..self.cells_width{
+            for y in 0..self.cells_height{
+                for z in 0..self.animals_grid[x * self.cells_height + y].count(){
+                    let animal_id = self.animals_grid[x * self.cells_height + y].index(z);
                     let animal_body = animals.animals[animal_id].body;
 
                     //animals
                     for i in 0..3{
                         for j in 0..3{
-                            let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
+                            let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
 
                             for k in 0..self.animals_grid[grid_index].count(){
                                 if k == z {continue}
@@ -99,7 +105,7 @@ impl Collisions{
                     //plants
                     for i in 0..3{
                         for j in 0..3{
-                            let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
+                            let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
 
                             for k in 0..self.plants_grid[grid_index].count(){
                                 let plant_id = self.plants_grid[grid_index].index(k);
@@ -123,7 +129,7 @@ impl Collisions{
                     //fruit
                     for i in 0..3{
                         for j in 0..3{
-                            let grid_index = (x+i).saturating_sub(1) * CELLS_HEIGHT + (y+j).saturating_sub(1);
+                            let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
 
                             for k in 0..self.fruit_grid[grid_index].count(){
                                 let fruit_id = self.fruit_grid[grid_index].index(k);
