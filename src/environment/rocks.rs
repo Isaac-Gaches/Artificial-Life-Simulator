@@ -28,7 +28,7 @@ impl RockMap{
         let noise = NoiseBuilder::fbm_2d_offset(seed as f32,self.width,seed as f32, self.height).with_seed(seed).with_freq(0.1).generate_scaled(0.0, 1.0);
         let noise2 = NoiseBuilder::fbm_2d_offset(seed as f32,self.width,seed as f32, self.height).with_seed(seed).with_freq(0.02).generate_scaled(0.0, 1.0);
 
-        for i in 0..self.count() as usize{
+        for i in 0..self.rocks.len(){
             let x = i % self.width;
             let y = i / self.height;
             if x == 0 || x == self.width- 1 || y == 0 || y == self.height - 1 || (*noise.index(i) > 0.85 || (*noise2.index(i) > 0.51 && *noise2.index(i) < 0.56)){
@@ -49,7 +49,13 @@ impl RockMap{
         }).collect()
     }
     pub fn count(&self) -> u32{
-        self.rocks.len() as u32
+        let mut count = 0;
+        self.rocks.iter().for_each(|i|{
+            if *i == 1{
+                count += 1;
+            }
+        });
+        count
     }
 
     pub fn set(&mut self,id:u8, pos: [f32;2],splat: i32) {

@@ -155,7 +155,6 @@ pub async fn run() {
                         species_list = environment::species::SpeciesList::default();
                         rocks = RockMap::new(&collisions);
                         rocks.randomise();
-
                         state.new = false;
                     }
                     else {
