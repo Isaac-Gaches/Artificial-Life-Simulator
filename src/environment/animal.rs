@@ -17,6 +17,8 @@ use crate::rendering::instance::Instance;
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Animal{
+    pub id: usize,
+    pub generation: usize,
     pub species_id: usize,
     pub maturity: f32,
     pub lean_mass: f32,
@@ -66,6 +68,8 @@ impl Animal{
 
         new_animal.lean_mass = new_animal.combat_stats.attack * 5.0 + new_animal.combat_stats.speed * 8.0 + new_animal.body.scale * 30.;
         new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
+
+        new_animal.generation = self.generation+1;
 
         new_animal
     }
@@ -120,13 +124,15 @@ impl Resources{
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Animals{
-    pub animals: Vec<Animal>
+    pub animals: Vec<Animal>,
+    next_free_id: usize,
 }
 
 impl Animals{
     pub fn genesis()->Self{
        Self{
            animals: vec![],
+           next_free_id: 0,
        }
     }
     pub fn spawn(&mut self,sim_params: &SimParams){
@@ -151,6 +157,8 @@ impl Animals{
         let combat_stats = CombatStats{ carnivore_factor: rng.gen_range(0.0..=1.0), aggression: 0.0, attack: max_stats.attack * 0.5, speed: max_stats.speed * 0.5, };
 
         let animal = Animal{
+            id: self.next_free_id,
+            generation: 0,
             species_id: 0,
             maturity: 0.0,
             lean_mass: body.scale * 30. + combat_stats.speed * 8.0 + combat_stats.attack * 5.0,
@@ -164,6 +172,8 @@ impl Animals{
             combat_stats,
             age: 0.0,
         };
+
+        self.next_free_id += 1;
 
         self.animals.push(animal);
     }
@@ -190,7 +200,10 @@ impl Animals{
                 animal.resources.energy -= 100. + (animal.reproduction_stats.offspring_investment * 20.);
                 animal.resources.protein -= animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment;
 
-                let offspring = animal.offspring(sim_params,species_list);
+                let mut offspring = animal.offspring(sim_params,species_list);
+                offspring.id = self.next_free_id;
+
+                self.next_free_id += 1;
 
                 eggs.spawn(animal.body.position,offspring);
             }

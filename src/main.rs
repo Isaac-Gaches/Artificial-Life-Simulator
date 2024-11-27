@@ -21,6 +21,7 @@ use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
 use crate::environment::collisions::{DIV};
+use crate::environment::plants::PlantSpawners;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::input_manager::Inputs;
@@ -58,9 +59,12 @@ pub async fn run() {
         ratio: 1.0,
     };
     let mut collisions = environment::collisions::Collisions::new(&sim_params);
-    let mut inspect = None;
-    let mut test = 0.;
+    let mut inspected_animal_id = 0;
+    let mut inspected_animal = None;
+    let mut follow = false;
     let mut rocks = RockMap::new(&collisions);
+    let mut plant_spawners = PlantSpawners{ bodies: vec![] };
+    plant_spawners.random(&sim_params);
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -72,10 +76,10 @@ pub async fn run() {
                 WindowEvent::KeyboardInput { event, .. } => {
                     if !state.menu && event.state == ElementState::Pressed && !event.repeat {
                         match event.key_without_modifiers().as_ref() {
-                            Key::Character("w") => inputs.up = true,
-                            Key::Character("s") => inputs.down = true,
-                            Key::Character("a") => inputs.left = true,
-                            Key::Character("d") => inputs.right = true,
+                            Key::Character("w") => { inputs.up = true; follow = false; },
+                            Key::Character("s") => { inputs.down = true; follow = false; },
+                            Key::Character("a") => { inputs.left = true; follow = false; },
+                            Key::Character("d") => { inputs.right = true; follow = false;},
                             Key::Character("=") => inputs.plus = true,
                             Key::Character("-") => inputs.minus = true,
                             Key::Character("q") => {
@@ -158,8 +162,8 @@ pub async fn run() {
                         state.new = false;
                     }
                     else {
-                        inspect = if let Some(animal) = animals.animals.iter().find(|animal|{
-                            animal.hue * animal.senses.animal_vision * animal.senses.fruit_vision * animal.senses.plant_vision * animal.senses.rock_vision == test
+                        inspected_animal = if let Some(animal) = animals.animals.iter().find(|animal|{
+                            animal.id == inspected_animal_id
                         }){
                             Some(animal.clone())
                         } else{
@@ -180,10 +184,11 @@ pub async fn run() {
 
                                 if step % 60 * 4 == 0 {
                                     for _ in 0..(sim_params.plants.spawn_rate*4.0) as u32{
-                                        plants.spawn(&rocks,&collisions,&sim_params);
+                                    //    plants.spawn(&rocks,&collisions,&sim_params);
+                                        plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
                                     }
                                     for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
-                                        fruit.spawn(&rocks,&collisions,&sim_params);
+                                      //  fruit.spawn(&rocks,&collisions,&sim_params);
                                     }
                                     if animals.count() < 30{
                                         animals.spawn(&sim_params);
@@ -223,21 +228,17 @@ pub async fn run() {
                                 let pos = camera.screen_to_world_pos(inputs.mouse_pos);
                                 if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last(){
                                     let animal = animals.animals.index(*i);
-                                    test = animal.hue * animal.senses.animal_vision * animal.senses.fruit_vision * animal.senses.plant_vision * animal.senses.rock_vision;
+                                    inspected_animal_id = animal.id;
+                                    follow = true;
                                 }
 
                             }
                         }
 
-                        camera.update(&inputs,&renderer.size());
+                        camera.update(&inputs,&renderer.size(),follow,&inspected_animal);
                         renderer.update(&animals,&plants,&fruit,&eggs,&rocks,camera);
 
-                    /*    if let Some(animal) = &inspect{
-                            camera.position = animal.body.position
-                        }*/
-                       // let net = if !animals.animals.is_empty() { Some(&animals.animals[0]) } else { None };
-
-                        match renderer.render(&mut stats,&mut sim_params,&inspect,&mut state) {
+                        match renderer.render(&mut stats,&mut sim_params,&inspected_animal,&mut state) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);
