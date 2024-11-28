@@ -16,6 +16,25 @@ pub struct Fruits{
     pub fruit: Vec<Fruit>,
     pub bodies: Vec<Instance>,
 }
+#[derive(Clone,Serialize,Deserialize)]
+pub struct FruitSpawners{
+    pub bodies: Vec<Instance>,
+}
+impl FruitSpawners {
+    pub fn spawn(&self,fruit: &mut Fruits,rock_map: &RockMap,collisions: &Collisions,sim_params: &SimParams){
+        self.bodies.iter().for_each(|spawner|{
+            fruit.spawn_near(rock_map,collisions,sim_params,spawner.position[0],spawner.position[1]);
+        })
+    }
+    pub fn random(&mut self,sim_params: &SimParams){
+        for _ in 0..5{
+            let x = rand::thread_rng().gen_range(0.0..sim_params.world.width);
+            let y = rand::thread_rng().gen_range(0.0..sim_params.world.height);
+
+            self.bodies.push(Instance::new([x,y],[0.,0.,0.],0.,1.0));
+        }
+    }
+}
 impl Fruits {
     pub fn genesis()->Self{
         Self{
@@ -48,7 +67,7 @@ impl Fruits {
         });
     }
 
-    pub fn spawn(&mut self,rock_map: &RockMap,collisions: &Collisions,sim_params: &SimParams){
+    pub fn spawn_random(&mut self,rock_map: &RockMap, collisions: &Collisions, sim_params: &SimParams){
         for _trials in 0..100{
             let x = rand::thread_rng().gen_range(0.0..sim_params.world.width);
             let y = rand::thread_rng().gen_range(0.0..sim_params.world.height);
@@ -70,6 +89,39 @@ impl Fruits {
                     self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
                     self.fruit.push(Fruit { eaten: false });
                     break;
+                }
+            }
+        }
+    }
+
+    pub fn spawn_near(&mut self,rock_map: &RockMap, collisions: &Collisions, sim_params: &SimParams,sx: f32, sy: f32){
+        let mut rng = rand::thread_rng();
+        let r = 20.;
+        for _trials in 0..10{
+            let x = (sx + rand::thread_rng().gen_range(-r..=r)).clamp(0.,sim_params.world.width);
+            let y = (sy + rand::thread_rng().gen_range(-r..=r)).clamp(0.,sim_params.world.height);
+
+            let mut spawn = true;
+
+            if rng.gen_bool((((x-sx).powf(2.) + (y-sy).powf(2.))/(r*r)).min(1.0) as f64){
+                spawn = false;
+            }
+            else {
+                'outer: for m in -1..=1{
+                    for n in -1..=1{
+                        let i = (x * DIV + m as f32) as usize * collisions.cells_height + (y * DIV + n as f32) as usize;
+                        if rock_map.rocks[i] > 0 {
+                            spawn = false;
+                            break 'outer;
+                        }
+                    }
+                }
+                if spawn {
+                    if collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 1{
+                        self.bodies.push(Instance::new([x, y], [0.3, 1., 0.0], 0.0, 0.1));
+                        self.fruit.push(Fruit { eaten: false });
+                        break;
+                    }
                 }
             }
         }

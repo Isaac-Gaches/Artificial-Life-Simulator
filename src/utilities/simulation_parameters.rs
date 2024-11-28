@@ -42,6 +42,9 @@ pub struct AnimalSettings{
 pub struct WorldSettings{
     pub width: f32,
     pub height: f32,
+    pub generate_plant_spawners: bool,
+    pub generate_fruit_spawners: bool,
+    pub generate_terrain: bool,
 }
 impl Default for SimParams{
     fn default() -> Self {
@@ -58,20 +61,23 @@ impl Default for SimParams{
             },
             animals: AnimalSettings{
                 brain_mutation_rate: 6.0,
-                brain_mutation_strength: 15.,
-                physical_mutation_rate: 10.0,
-                physical_mutation_strength: 15.0,
+                brain_mutation_strength: 10.,
+                physical_mutation_rate: 15.0,
+                physical_mutation_strength: 10.0,
             },
             build: BuildSettings {
                 pen_size: 0,
                 build_mode: false
             },
             simulation: SimulationSettings {
-                steps_per_frame: 0
+                steps_per_frame: 1
             },
             world: WorldSettings {
                 width: 120.0,
-                height: 120.0
+                height: 120.0,
+                generate_plant_spawners: true,
+                generate_fruit_spawners: true,
+                generate_terrain: true,
             },
             highlighted_species: -1,
         }

@@ -16,10 +16,22 @@ pub struct RockMap{
 }
 impl RockMap{
     pub fn new(col: &Collisions)->Self{
+        let mut rocks = vec![0;col.cells_width*col.cells_height];
+        let width = col.cells_width;
+        let height = col.cells_height;
+
+        for i in 0..rocks.len(){
+            let x = i % width;
+            let y = i / height;
+            if x == 0 || x == width- 1 || y == 0 || y == height - 1{
+                rocks[i] =1 ;
+            }
+        }
+
         Self{
-            rocks: vec![0;col.cells_width*col.cells_height],
-            width: col.cells_width,
-            height: col.cells_height,
+            rocks,
+            width,
+            height,
         }
     }
     pub fn randomise(&mut self){
@@ -29,9 +41,7 @@ impl RockMap{
         let noise2 = NoiseBuilder::fbm_2d_offset(seed as f32,self.width,seed as f32, self.height).with_seed(seed).with_freq(0.02).generate_scaled(0.0, 1.0);
 
         for i in 0..self.rocks.len(){
-            let x = i % self.width;
-            let y = i / self.height;
-            if x == 0 || x == self.width- 1 || y == 0 || y == self.height - 1 || (*noise.index(i) > 0.85 || (*noise2.index(i) > 0.51 && *noise2.index(i) < 0.56)){
+            if *noise.index(i) > 0.85 || (*noise2.index(i) > 0.51 && *noise2.index(i) < 0.56){
                 self.rocks[i] =1 ;
             }
         }

@@ -141,11 +141,10 @@ impl Collisions{
                                 let relative_pos_x = fruit_body.position[0] - animal_body.position[0];
                                 let relative_pos_y = fruit_body.position[1] - animal_body.position[1];
 
-                                if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !plants.plants[fruit_id].eaten{
+                                if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !fruit.fruit[fruit_id].eaten{
                                     let resources = fruit.handle_collision(fruit_id,sim_params);
-                                    animals.handle_plant_collision(animal_id,resources);
+                                    animals.handle_fruit_collision(animal_id,resources);
                                 }
-
                             }
                         }
                     }

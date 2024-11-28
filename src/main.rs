@@ -21,6 +21,7 @@ use winit::dpi::PhysicalSize;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
 use crate::environment::collisions::{DIV};
+use crate::environment::fruit::FruitSpawners;
 use crate::environment::plants::PlantSpawners;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
@@ -65,6 +66,8 @@ pub async fn run() {
     let mut rocks = RockMap::new(&collisions);
     let mut plant_spawners = PlantSpawners{ bodies: vec![] };
     plant_spawners.random(&sim_params);
+    let mut fruit_spawners = FruitSpawners{ bodies: vec![] };
+    fruit_spawners.random(&sim_params);
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -144,21 +147,37 @@ pub async fn run() {
                         state.load_save = false;
                     }
                     else if state.new {
-                        let x = sim_params.world.width;
+                        sim_params.world.height = sim_params.world.width;
+                        let world_settings = sim_params.world.clone();
                         sim_params = utilities::simulation_parameters::SimParams::default();
-                        sim_params.world.width = x;
-                        sim_params.world.height = x;
+                        sim_params.world = world_settings;
+
                         camera.position = [sim_params.world.width/2.0,sim_params.world.height/2.0];
-                        collisions = environment::collisions::Collisions::new(&sim_params);
+
                         step = 0;
+                        stats = utilities::statistics::Stats::default();
+
+                        collisions = environment::collisions::Collisions::new(&sim_params);
                         animals = Animals::genesis();
+                        eggs = environment::eggs::Eggs::default();
                         plants = environment::plants::Plants::genesis();
                         fruit = environment::fruit::Fruits::genesis();
-                        stats = utilities::statistics::Stats::default();
-                        eggs = environment::eggs::Eggs::default();
                         species_list = environment::species::SpeciesList::default();
+
                         rocks = RockMap::new(&collisions);
-                        rocks.randomise();
+                        plant_spawners = PlantSpawners{ bodies: vec![] };
+                        fruit_spawners = FruitSpawners{ bodies: vec![] };
+
+                        if sim_params.world.generate_terrain{
+                            rocks.randomise();
+                        }
+                        if sim_params.world.generate_fruit_spawners{
+                            fruit_spawners.random(&sim_params);
+                        }
+                        if sim_params.world.generate_plant_spawners{
+                            plant_spawners.random(&sim_params);
+                        }
+
                         state.new = false;
                     }
                     else {
@@ -183,13 +202,8 @@ pub async fn run() {
                                 }
 
                                 if step % 60 * 4 == 0 {
-                                    for _ in 0..(sim_params.plants.spawn_rate*4.0) as u32{
-                                    //    plants.spawn(&rocks,&collisions,&sim_params);
-                                        plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
-                                    }
-                                    for _ in 0..(sim_params.fruit.spawn_rate * 4.0) as u32 {
-                                      //  fruit.spawn(&rocks,&collisions,&sim_params);
-                                    }
+                                    plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
+                                    fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
                                     if animals.count() < 30{
                                         animals.spawn(&sim_params);
                                     }

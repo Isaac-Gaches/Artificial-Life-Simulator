@@ -531,5 +531,17 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
                 ui.label("World Size");
                 ui.add(egui::DragValue::new(&mut sim_params.world.width));
             });
+            ui.horizontal(|ui|{
+                ui.label("Generate Terrain");
+                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,""));
+            });
+            ui.horizontal(|ui|{
+                ui.label("Generate Plants");
+                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,""));
+            });
+            ui.horizontal(|ui|{
+                ui.label("Generate Fruit");
+                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,""));
+            });
         });
 }
