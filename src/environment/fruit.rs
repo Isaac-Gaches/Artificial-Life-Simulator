@@ -96,14 +96,13 @@ impl Fruits {
 
     pub fn spawn_near(&mut self,rock_map: &RockMap, collisions: &Collisions, sim_params: &SimParams,sx: f32, sy: f32){
         let mut rng = rand::thread_rng();
-        let r = 20.;
         for _trials in 0..10{
-            let x = (sx + rand::thread_rng().gen_range(-r..=r)).clamp(0.,sim_params.world.width);
-            let y = (sy + rand::thread_rng().gen_range(-r..=r)).clamp(0.,sim_params.world.height);
+            let x = (sx + rand::thread_rng().gen_range(-sim_params.fruit.spawn_radius..=sim_params.fruit.spawn_radius)).clamp(0.,sim_params.world.width);
+            let y = (sy + rand::thread_rng().gen_range(-sim_params.fruit.spawn_radius..=sim_params.fruit.spawn_radius)).clamp(0.,sim_params.world.height);
 
             let mut spawn = true;
 
-            if rng.gen_bool((((x-sx).powf(2.) + (y-sy).powf(2.))/(r*r)).min(1.0) as f64){
+            if rng.gen_bool((((x-sx).powf(2.) + (y-sy).powf(2.))/(sim_params.fruit.spawn_radius*sim_params.fruit.spawn_radius)).min(1.0) as f64){
                 spawn = false;
             }
             else {

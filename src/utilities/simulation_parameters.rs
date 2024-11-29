@@ -12,7 +12,7 @@ pub struct SimParams{
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct SimulationSettings {
-    pub steps_per_frame: i32,
+    pub steps_per_frame: i8,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct BuildSettings {
@@ -21,13 +21,15 @@ pub struct BuildSettings {
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct PlantSettings {
-    pub spawn_rate: f32,
+    pub spawn_rate: i8,
+    pub spawn_radius: f32,
     pub energy: f32,
     pub protein: f32,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct FruitSettings {
-    pub spawn_rate: f32,
+    pub spawn_rate: i8,
+    pub spawn_radius: f32,
     pub energy: f32,
     pub protein: f32,
 }
@@ -50,12 +52,14 @@ impl Default for SimParams{
     fn default() -> Self {
         Self{
             plants: PlantSettings {
-                spawn_rate: 4.,
+                spawn_rate: 6,
+                spawn_radius: 0.0,
                 energy: 80.0,
                 protein: 0.02,
             },
             fruit: FruitSettings {
-                spawn_rate: 1.,
+                spawn_rate: 2,
+                spawn_radius: 0.0,
                 energy: 300.0,
                 protein: 0.1,
             },

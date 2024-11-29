@@ -178,7 +178,7 @@ pub async fn run() {
                             plant_spawners.random(&sim_params);
                         }
 
-                        state.new = false;
+                        state.new = true;
                     }
                     else {
                         inspected_animal = if let Some(animal) = animals.animals.iter().find(|animal|{
@@ -201,9 +201,13 @@ pub async fn run() {
                                     graph_timer = SystemTime::now();
                                 }
 
-                                if step % 60 * 4 == 0 {
-                                    plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
-                                    fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
+                                if step % 3600 == 0 {
+                                    for _ in 0..sim_params.plants.spawn_rate{
+                                        plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
+                                    }
+                                    for _ in 0..sim_params.fruit.spawn_rate{
+                                        fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
+                                    }
                                     if animals.count() < 30{
                                         animals.spawn(&sim_params);
                                     }

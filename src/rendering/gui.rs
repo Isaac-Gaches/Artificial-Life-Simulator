@@ -420,6 +420,21 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
             });
     }
+    if toggles.simulation_settings {
+        egui::Window::new("Simulation Settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui|{
+                    ui.label("Speed");
+                    ui.add(egui::DragValue::new(&mut sim_params.simulation.steps_per_frame).clamp_range(0..=200));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Stats Refresh Time");
+                    ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
+                });
+            });
+    }
     if toggles.food_settings {
         egui::Window::new("Food Settings")
             .resizable(false)
@@ -431,7 +446,11 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui| {
                     ui.label("Spawn rate");
-                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0.25..=50.0));
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0..=60));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Spawn radius");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_radius).clamp_range(5..=30));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
@@ -448,7 +467,11 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui| {
                     ui.label("Spawn rate");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0.25..=50.0));
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0..=60));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Spawn radius");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_radius).clamp_range(5..=30));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
@@ -495,21 +518,6 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.horizontal(|ui|{
                     ui.label("Pen Size");
                     ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
-                });
-            });
-    }
-    if toggles.simulation_settings {
-        egui::Window::new("Simulation Settings")
-            .resizable(false)
-            .collapsible(false)
-            .show(ui, |ui| {
-                ui.horizontal(|ui|{
-                    ui.label("Speed");
-                    ui.add(egui::DragValue::new(&mut sim_params.simulation.steps_per_frame).clamp_range(0..=200));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Stats Refresh Time");
-                    ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
                 });
             });
     }
