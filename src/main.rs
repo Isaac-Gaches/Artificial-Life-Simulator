@@ -178,7 +178,7 @@ pub async fn run() {
                             plant_spawners.random(&sim_params);
                         }
 
-                        state.new = true;
+                        state.new = false;
                     }
                     else {
                         inspected_animal = if let Some(animal) = animals.animals.iter().find(|animal|{
@@ -208,7 +208,12 @@ pub async fn run() {
                                     for _ in 0..sim_params.fruit.spawn_rate{
                                         fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
                                     }
-                                    if animals.count() < 30{
+                                    if animals.count() < 20{
+                                        animals.spawn(&sim_params);
+                                        animals.spawn(&sim_params);
+                                        animals.spawn(&sim_params);
+                                        animals.spawn(&sim_params);
+                                        animals.spawn(&sim_params);
                                         animals.spawn(&sim_params);
                                     }
                                 }
@@ -244,12 +249,13 @@ pub async fn run() {
                         if !renderer.egui_context().is_pointer_over_area() {
                             if inputs.left_mouse {
                                 let pos = camera.screen_to_world_pos(inputs.mouse_pos);
-                                if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last(){
-                                    let animal = animals.animals.index(*i);
-                                    inspected_animal_id = animal.id;
-                                    follow = true;
+                                if pos[0] >0. && pos[0] < sim_params.world.width && pos[1] >0. && pos[1] < sim_params.world.height {
+                                    if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last() {
+                                        let animal = animals.animals.index(*i);
+                                        inspected_animal_id = animal.id;
+                                        follow = true;
+                                    }
                                 }
-
                             }
                         }
 

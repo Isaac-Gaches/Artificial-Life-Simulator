@@ -195,7 +195,7 @@ impl Animals{
 
             animal.brain.network.input(input);
 
-            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (animal.reproduction_stats.offspring_investment * 20.) + animal.resources.max_energy * 0.5 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment{
+            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (animal.reproduction_stats.offspring_investment * 20.) + animal.resources.max_energy * 0.3 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment{
                 animal.reproduction_stats.birth_timer = 10. + animal.reproduction_stats.offspring_investment * 4.;
                 animal.resources.energy -= 100. + (animal.reproduction_stats.offspring_investment * 20.);
                 animal.resources.protein -= animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment;
@@ -225,7 +225,7 @@ impl Animals{
                         animal.body.position[0] = start;
                         break 'outer;
                     }
-                }
+                }cargo
             }
 
             let start = animal.body.position[1];
@@ -263,12 +263,13 @@ impl Animals{
             animal.combat_stats.aggression = response.index(3).min(1.0);
            // animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
 
-            animal.resources.energy -=
-                animal.body.scale * 0.5 +
-                response.index(0) * animal.combat_stats.speed * 0.3 +
-                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.3 +
-                0.1 * animal.combat_stats.aggression * animal.combat_stats.attack +
-                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.001;
+            animal.resources.energy -= //1 energy per sec at min ish
+                animal.body.scale * 0.042 + // 0.08 -> 0.5
+                response.index(0) * animal.combat_stats.speed * 0.0067 + // 0.5 -> 4
+                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.0067 + // 0.5 -> 4
+                0.001 * animal.combat_stats.aggression * animal.combat_stats.attack + // 0 -> 10
+                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.0001; // 0 -> 48
+
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
@@ -280,7 +281,7 @@ impl Animals{
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);
                 animal.lean_mass = animal.combat_stats.attack * 5.0 + animal.combat_stats.speed * 8.0 + animal.body.scale * 30.;
                 animal.resources.max_protein = animal.body.scale * 400.;
-                animal.resources.max_energy = animal.body.scale *20000.;
+                animal.resources.max_energy = animal.body.scale *10000.;
             }
 
             if animal.body.position[0] > sim_params.world.width{
@@ -331,15 +332,14 @@ impl Animals{
         let efficiency = 1.0/(-3.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.235;
 
         let (energy,protein) =
-            ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 10.) * efficiency,
-            (self.animals.index(other_animal_id).resources.protein + self.animals.index(other_animal_id).lean_mass * 10.) * efficiency);
+            ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 5.) * efficiency,
+            (self.animals.index(other_animal_id).resources.protein + self.animals.index(other_animal_id).lean_mass ) * efficiency);
 
         self.animals.index_mut(other_animal_id).resources.energy = 0.;
 
         let animal = self.animals.index_mut(animal_id);
 
-        animal.resources.energy += energy;
-        animal.resources.protein += protein;
+        animal.resources.add((energy,protein));
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){
