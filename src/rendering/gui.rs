@@ -551,5 +551,36 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
                 ui.label("Generate Fruit");
                 ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,""));
             });
+
+            egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
+                ui.style_mut().spacing.button_padding = (128.0, 16.0).into();
+
+
+                if ui.button(RichText::new("Load Save_0").heading()).clicked(){
+                    sim_params.save_id = 0;
+                    state.menu = !state.menu;
+                    state.load_save = true;
+                }
+                if ui.button(RichText::new("Load Save_1").heading()).clicked(){
+                    sim_params.save_id = 1;
+                    state.menu = !state.menu;
+                    state.load_save = true;
+                }
+                if ui.button(RichText::new("Load Save_2").heading()).clicked(){
+                    sim_params.save_id = 2;
+                    state.menu = !state.menu;
+                    state.load_save = true;
+                }
+                if ui.button(RichText::new("Load Save_3").heading()).clicked(){
+                    sim_params.save_id = 3;
+                    state.menu = !state.menu;
+                    state.load_save = true;
+                }
+                if ui.button(RichText::new("Load Save_4").heading()).clicked(){
+                    sim_params.save_id = 4;
+                    state.menu = !state.menu;
+                    state.load_save = true;
+                }
+            });
         });
 }

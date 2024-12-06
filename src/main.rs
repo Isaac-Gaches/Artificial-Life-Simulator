@@ -39,6 +39,7 @@ fn main() {
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
     let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
+    let mut save_syatem = SaveSystem::default();
     let mut renderer = Renderer::new(window).await;
     let mut step = 0;
     let mut animals = Animals::genesis();
@@ -89,7 +90,7 @@ pub async fn run() {
                                 animals.kill();
                                 plants.kill();
                                 fruit.kill();
-                                SaveSystem::save(step, animals.clone(), plants.clone(), fruit.clone(), eggs.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone());
+                                save_syatem.save(step, animals.clone(), plants.clone(), fruit.clone(), eggs.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone());
 
                                 collisions.update_animal_grid(animals.instances().as_slice());
                                 collisions.update_plant_grid(plants.instances());
@@ -139,7 +140,7 @@ pub async fn run() {
                         }
                     }
                     else if state.load_save {
-                        (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks) = SaveSystem::load().open();
+                        (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks) = save_syatem.load(sim_params.save_id).open();
                         collisions = environment::collisions::Collisions::new(&sim_params);
                         collisions.update_animal_grid(animals.instances().as_slice());
                         collisions.update_plant_grid(plants.instances());

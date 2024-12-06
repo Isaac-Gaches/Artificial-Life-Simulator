@@ -225,7 +225,7 @@ impl Animals{
                         animal.body.position[0] = start;
                         break 'outer;
                     }
-                }cargo
+                }
             }
 
             let start = animal.body.position[1];

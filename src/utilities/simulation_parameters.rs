@@ -9,6 +9,7 @@ pub struct SimParams{
     pub simulation: SimulationSettings,
     pub world: WorldSettings,
     pub highlighted_species: i32,
+    pub save_id: usize,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct SimulationSettings {
@@ -84,6 +85,7 @@ impl Default for SimParams{
                 generate_terrain: true,
             },
             highlighted_species: -1,
+            save_id: 0,
         }
     }
 }
