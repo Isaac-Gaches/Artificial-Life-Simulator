@@ -264,12 +264,11 @@ impl Animals{
            // animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
 
             animal.resources.energy -= //1 energy per sec at min ish
-                animal.body.scale * 0.042 + // 0.08 -> 0.5
-                response.index(0) * animal.combat_stats.speed * 0.0067 + // 0.5 -> 4
-                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.0067 + // 0.5 -> 4
-                0.001 * animal.combat_stats.aggression * animal.combat_stats.attack + // 0 -> 10
-                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.0001; // 0 -> 48
-
+                animal.body.scale * 0.042 * sim_params.animals.size_energy_cost + // 0.08 -> 0.5
+                response.index(0) * animal.combat_stats.speed * 0.0067 * sim_params.animals.speed_energy_cost + // 0.5 -> 4
+                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.0067 * sim_params.animals.speed_energy_cost + // 0.5 -> 4
+                0.001 * animal.combat_stats.aggression * animal.combat_stats.attack * sim_params.animals.attack_energy_cost + // 0 -> 10
+                (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.0001 * sim_params.animals.vision_energy_cost; // 0 -> 48
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
@@ -305,31 +304,24 @@ impl Animals{
             }
 
             animal.age+=1./60.;
-
-/*            if sim_params.highlighted_species > 0 && animal.species_id == sim_params.highlighted_species as usize{
-                animal.body.color = [1.,1.,1.];
-            }
-            else if animal.body.color == [1.,1.,1.]{
-                animal.body.color = [animal.combat_stats.carnivore_factor,1.- animal.combat_stats.carnivore_factor,(animal.combat_stats.speed -1.0)/3.];
-            }*/
         });
     }
 
-    pub fn handle_animal_collision(&mut self, animal_id: usize, other_animal_id: usize){
+    pub fn handle_animal_collision(&mut self, animal_id: usize, other_animal_id: usize,efficiency: f32){
         if self.animals.index(animal_id).resources.energy > 0. && self.animals.index(other_animal_id).resources.energy > 0. {
             let damage_i = self.animals.index(animal_id).combat_stats.aggression * self.animals.index(animal_id).combat_stats.attack * self.animals.index(animal_id).body.scale;
             let damage_j = self.animals.index(other_animal_id).combat_stats.aggression * self.animals.index(other_animal_id).combat_stats.attack * self.animals.index(animal_id).body.scale;
 
             if damage_i > damage_j {
-                self.animal_collision(animal_id,other_animal_id);
+                self.animal_collision(animal_id,other_animal_id,efficiency);
             } else if damage_j > damage_i{
-                self.animal_collision(other_animal_id,animal_id);
+                self.animal_collision(other_animal_id,animal_id,efficiency);
             }
         }
     }
 
-    fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize){
-        let efficiency = 1.0/(-3.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.235;
+    fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize,efficiency: f32,){
+        let efficiency = (1.0/(-3.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.235) * efficiency;
 
         let (energy,protein) =
             ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 5.) * efficiency,
@@ -342,8 +334,8 @@ impl Animals{
         animal.resources.add((energy,protein));
     }
 
-    pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32)){
-        let efficiency = 1.0 - 0.7 * self.animals[animal_id].combat_stats.carnivore_factor;
+    pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32),efficiency: f32){
+        let efficiency = (1.0 - 0.7 * self.animals[animal_id].combat_stats.carnivore_factor) * efficiency;
 
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }

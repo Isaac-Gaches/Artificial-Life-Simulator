@@ -96,7 +96,7 @@ impl Collisions{
                                 let distance = (collision_axis_x*collision_axis_x + collision_axis_y*collision_axis_y).sqrt();
 
                                 if distance < (animals.animals[other_animal_id].body.scale + animal_body.scale) * 0.5{
-                                    animals.handle_animal_collision(animal_id,other_animal_id);
+                                    animals.handle_animal_collision(animal_id,other_animal_id,sim_params.animals.carnivory_efficiency);
                                 }
                             }
                         }
@@ -119,7 +119,7 @@ impl Collisions{
 
                                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !plants.plants[plant_id].eaten{
                                     let resources = plants.handle_collision(plant_id,sim_params);
-                                    animals.handle_plant_collision(animal_id,resources);
+                                    animals.handle_plant_collision(animal_id,resources,sim_params.animals.herbivory_efficiency);
                                 }
 
                             }

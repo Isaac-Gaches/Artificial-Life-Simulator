@@ -8,6 +8,7 @@ use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::Animal;
+use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 
@@ -56,14 +57,9 @@ impl EguiRenderer {
 
         egui_context.set_visuals(visuals);
 
-        let egui_state = State::new(egui_context.clone(), id, &window, None, None);
+        let egui_state = State::new(egui_context.clone(), id, &window, None, None, None);
 
-        let egui_renderer = Renderer::new(
-            device,
-            output_color_format,
-            output_depth_format,
-            msaa_samples,
-        );
+        let egui_renderer = Renderer::new(device, output_color_format, output_depth_format, msaa_samples, false);
 
         let mut toggles = Toggles::default();
         toggles.animals = true;
@@ -139,13 +135,14 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State,&mut SimParams),
+        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State,&mut SimParams,&SaveSystem),
         state: &mut crate::utilities::state::State,
-        sim_params: &mut SimParams
+        sim_params: &mut SimParams,
+        save_system: &SaveSystem
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,state,sim_params);
+            run_ui(&self.context,state,sim_params,save_system);
         });
 
         self.state
@@ -443,22 +440,25 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.heading("Plants");
                 ui.separator();
-
                 ui.horizontal(|ui| {
-                    ui.label("Spawn rate");
+                    ui.label("Global spawn rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.global_spawn_rate).clamp_range(0..=60));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Feeder spawn rate");
                     ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_rate).clamp_range(0..=60));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Spawn radius");
+                    ui.label("Feeder spawn radius");
                     ui.add(egui::DragValue::new(&mut sim_params.plants.spawn_radius).clamp_range(5..=30));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
-                    ui.add(egui::DragValue::new(&mut sim_params.plants.energy).clamp_range(0.0..=500.));
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.energy).clamp_range(0.0..=500.).max_decimals(2));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Protein");
-                    ui.add(egui::DragValue::new(&mut sim_params.plants.protein).clamp_range(0.0..=10.));
+                    ui.add(egui::DragValue::new(&mut sim_params.plants.protein).clamp_range(0.0..=10.).speed(0.1).max_decimals(2));
                 });
 
                 ui.separator();
@@ -466,20 +466,24 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.separator();
 
                 ui.horizontal(|ui| {
-                    ui.label("Spawn rate");
+                    ui.label("Global spawn rate");
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.global_spawn_rate).clamp_range(0..=60));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Feeder spawn rate");
                     ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_rate).clamp_range(0..=60));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Spawn radius");
+                    ui.label("Feeder spawn radius");
                     ui.add(egui::DragValue::new(&mut sim_params.fruit.spawn_radius).clamp_range(5..=30));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Energy");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.energy).clamp_range(0.0..=500.));
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.energy).clamp_range(0.0..=500.).max_decimals(2));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Protein");
-                    ui.add(egui::DragValue::new(&mut sim_params.fruit.protein).clamp_range(0.0..=10.));
+                    ui.add(egui::DragValue::new(&mut sim_params.fruit.protein).clamp_range(0.0..=10.).speed(0.1).max_decimals(2));
                 });
             });
     }
@@ -487,22 +491,81 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
         egui::Window::new("Animal Settings")
             .resizable(false)
             .collapsible(false)
+            .default_width(0.0)
             .show(ui, |ui| {
+                ui.heading("Mutations");
+                ui.separator();
+
                 ui.horizontal(|ui|{
-                    ui.label("Brain Mutation Rate");
+                    ui.label("Brain mutation bate");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.brain_mutation_rate).clamp_range(0..=100));
                 });
                 ui.horizontal(|ui|{
-                    ui.label("Brain Mutation Strength");
+                    ui.label("Brain mutation strength");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.brain_mutation_strength).clamp_range(0..=100));
                 });
                 ui.horizontal(|ui|{
-                    ui.label("Physical Mutation Rate");
+                    ui.label("Physical mutation rate");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.physical_mutation_rate).clamp_range(0..=100));
                 });
                 ui.horizontal(|ui|{
-                    ui.label("Physical Mutation Strength");
+                    ui.label("Physical mutation strength");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.physical_mutation_strength).clamp_range(0..=100));
+                });
+
+                ui.separator();
+                ui.heading("Diet efficiency");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Herbivore efficiency");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.herbivory_efficiency).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Carnivore efficiency");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.carnivory_efficiency).clamp_range(0.0..=1.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+
+                ui.separator();
+                ui.heading("Energy use");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Speed energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Size energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Attack energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Vision energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+
+                ui.separator();
+                ui.heading("Protein use");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Speed protein cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Size protein cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Attack protein cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Vision protein cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
                 });
             });
     }
@@ -523,17 +586,13 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
     }
 }
 
-pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams) {
+pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &SaveSystem) {
     egui::CentralPanel::default()
         .show(ui,|ui|{
             ui.heading("menu");
             if ui.selectable_label(false, RichText::new("New").heading()).clicked(){
                 state.menu = !state.menu;
                 state.new = true;
-            }
-            if ui.selectable_label(false, RichText::new("Load").heading()).clicked(){
-                state.menu = !state.menu;
-                state.load_save = true;
             }
             ui.horizontal(|ui|{
                 ui.label("World Size");
@@ -555,31 +614,15 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
             egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
                 ui.style_mut().spacing.button_padding = (128.0, 16.0).into();
 
-
-                if ui.button(RichText::new("Load Save_0").heading()).clicked(){
-                    sim_params.save_id = 0;
-                    state.menu = !state.menu;
-                    state.load_save = true;
+                for (i,name) in save_system.saves.iter().enumerate() {
+                    if ui.button(RichText::new(["Load",name].join(" ")).heading()).clicked(){
+                        sim_params.save_id = i;
+                        state.menu = !state.menu;
+                        state.load_save = true;
+                    }
                 }
-                if ui.button(RichText::new("Load Save_1").heading()).clicked(){
-                    sim_params.save_id = 1;
-                    state.menu = !state.menu;
-                    state.load_save = true;
-                }
-                if ui.button(RichText::new("Load Save_2").heading()).clicked(){
-                    sim_params.save_id = 2;
-                    state.menu = !state.menu;
-                    state.load_save = true;
-                }
-                if ui.button(RichText::new("Load Save_3").heading()).clicked(){
-                    sim_params.save_id = 3;
-                    state.menu = !state.menu;
-                    state.load_save = true;
-                }
-                if ui.button(RichText::new("Load Save_4").heading()).clicked(){
-                    sim_params.save_id = 4;
-                    state.menu = !state.menu;
-                    state.load_save = true;
+                if save_system.saves.len() == 0{
+                    ui.label(RichText::new("No Saves").heading());
                 }
             });
         });

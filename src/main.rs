@@ -12,12 +12,13 @@ use winit::{
     event::*,
     event_loop::EventLoop,
     keyboard::Key,
-    window::WindowBuilder,
+    //window::WindowBuilder,
 };
 use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::System;
 use winit::dpi::PhysicalSize;
+use winit::event_loop::ActiveEventLoop;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
 use crate::environment::collisions::{DIV};
@@ -38,7 +39,8 @@ fn main() {
 
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
-    let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
+  //  let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
+    let window = Arc::new(ActiveEventLoop::create_window().unwrap());
     let mut save_syatem = SaveSystem::default();
     let mut renderer = Renderer::new(window).await;
     let mut step = 0;
@@ -130,7 +132,7 @@ pub async fn run() {
                 }
                 WindowEvent::RedrawRequested => {
                     if state.menu{
-                        match renderer.main_menu(&mut state,&mut sim_params) {
+                        match renderer.main_menu(&mut state,&mut sim_params,&save_syatem) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);
@@ -209,6 +211,14 @@ pub async fn run() {
                                     for _ in 0..sim_params.fruit.spawn_rate{
                                         fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
                                     }
+
+                                    for _ in 0..sim_params.plants.global_spawn_rate{
+                                        plants.spawn_random(&rocks, &collisions, &sim_params);
+                                    }
+                                    for _ in 0..sim_params.fruit.global_spawn_rate{
+                                        fruit.spawn_random(&rocks, &collisions, &sim_params);
+                                    }
+
                                     if animals.count() < 20{
                                         animals.spawn(&sim_params);
                                         animals.spawn(&sim_params);

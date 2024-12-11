@@ -12,15 +12,26 @@ use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
 use crate::utilities::statistics::Stats;
 
-#[derive(Default)]
 pub struct SaveSystem{
-    saves: Vec<String>,
+    pub saves: Vec<String>,
     save_number: usize,
+}
+
+impl Default for SaveSystem{
+    fn default() -> Self {
+        let saves: Vec<String> = fs::read_dir("saves").unwrap().map(|file|{
+            file.unwrap().file_name().into_string().unwrap()
+        }).collect();
+        Self{
+            save_number: saves.len(),
+            saves,
+        }
+    }
 }
 
 impl SaveSystem{
     pub fn load(&self,save_id: usize) -> SimulationSave{
-        let data = fs::read_to_string(self.saves.index(save_id)).expect("Unable to read file");
+        let data = fs::read_to_string(["saves/",self.saves.index(save_id)].join("")).expect("Unable to read file");
 
         serde_json::from_str(&data).unwrap()
     }
@@ -40,10 +51,10 @@ impl SaveSystem{
 
         let serialized = serde_json::to_string(&save).unwrap();
 
-        let path = ["saves/save_", &self.save_number.to_string()].join("");
+        let path = ["save_",&self.save_number.to_string()].join("");
 
-        File::create(&path).unwrap();
-        fs::write(&path, serialized).expect("Unable to write file");
+        File::create(["saves/",&path].join("")).unwrap();
+        fs::write(["saves/",&path].join(""), serialized).expect("Unable to write file");
 
         self.save_number+=1;
         self.saves.push(path);
