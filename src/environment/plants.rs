@@ -102,10 +102,7 @@ impl Plants {
 
             let mut spawn = true;
 
-            if rng.gen_bool((((x-sx).powf(2.) + (y-sy).powf(2.))/(sim_params.plants.spawn_radius*sim_params.plants.spawn_radius)).min(1.0) as f64){
-                spawn = false;
-            }
-            else {
+            if !rng.gen_bool((((x-sx).powf(2.) + (y-sy).powf(2.))/(sim_params.plants.spawn_radius*sim_params.plants.spawn_radius)).min(1.0) as f64) {
                 'outer: for m in -1..=1{
                     for n in -1..=1{
                         let i = (x * DIV + m as f32) as usize * collisions.cells_height + (y * DIV + n as f32) as usize;

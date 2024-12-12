@@ -1,8 +1,9 @@
-use egui::{Color32, Context, emath, Frame, Pos2, RichText, Sense, Stroke, Vec2, Visuals};
+use egui::{Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
 use egui::epaint::Shadow;
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
+use epaint::Pos2;
 use epaint::{CircleShape, Rect, Shape};
 use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use winit::event::WindowEvent;
@@ -57,9 +58,9 @@ impl EguiRenderer {
 
         egui_context.set_visuals(visuals);
 
-        let egui_state = State::new(egui_context.clone(), id, &window, None, None, None);
+        let egui_state = State::new(egui_context.clone(), id, &window, None, None);
 
-        let egui_renderer = Renderer::new(device, output_color_format, output_depth_format, msaa_samples, false);
+        let egui_renderer = Renderer::new(device, output_color_format, output_depth_format, msaa_samples);
 
         let mut toggles = Toggles::default();
         toggles.animals = true;
@@ -91,6 +92,7 @@ impl EguiRenderer {
         state: &mut crate::utilities::state::State,
     ) {
         let raw_input = self.state.take_egui_input(window);
+
         let full_output = self.context.run(raw_input, |_ui| {
             run_ui(&self.context,stats,&mut self.toggles,sim_params,animal,state);
         });
@@ -248,7 +250,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         let (response, painter) = ui.allocate_painter(Vec2::new(ui.available_width(), ui.available_width() * 0.5), Sense::hover());
 
                         let to_screen = emath::RectTransform::from_to(
-                            Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
+                            Rect::from_min_size(epaint::Pos2::ZERO, response.rect.square_proportions()),
                             response.rect,
                         );
 
@@ -284,7 +286,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                                     let p2 = Pos2::new(0.05 + k as f32 * spacing2, 0.05 + (i as f32 - 1.0) * spacing_x);
 
-                                    Shape::LineSegment { points: [to_screen.transform_pos(p1), to_screen.transform_pos(p2)], stroke: Stroke { width, color } }
+                                    Shape::LineSegment { points: [to_screen.transform_pos(p1), to_screen.transform_pos(p2)], stroke: Stroke{ width, color }}
                                 })
                             })
                         }).collect();
@@ -589,41 +591,32 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &SaveSystem) {
     egui::CentralPanel::default()
         .show(ui,|ui|{
-            ui.heading("menu");
-            if ui.selectable_label(false, RichText::new("New").heading()).clicked(){
-                state.menu = !state.menu;
-                state.new = true;
-            }
-            ui.horizontal(|ui|{
-                ui.label("World Size");
-                ui.add(egui::DragValue::new(&mut sim_params.world.width));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Generate Terrain");
-                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,""));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Generate Plants");
-                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,""));
-            });
-            ui.horizontal(|ui|{
-                ui.label("Generate Fruit");
-                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,""));
-            });
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center),|ui|{
+                ui.heading(RichText::new("Main Menu").heading());
+                if ui.add_sized([240., 40.], egui::Button::new(RichText::new("New").heading())).clicked(){
+                    state.menu = !state.menu;
+                    state.new = true;
+                }
+                    ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World Size: "));
 
-            egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
-                ui.style_mut().spacing.button_padding = (128.0, 16.0).into();
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate Terrain"));
 
-                for (i,name) in save_system.saves.iter().enumerate() {
-                    if ui.button(RichText::new(["Load",name].join(" ")).heading()).clicked(){
-                        sim_params.save_id = i;
-                        state.menu = !state.menu;
-                        state.load_save = true;
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate Plants"));
+
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate Fruit"));
+
+                egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
+                    for (i,name) in save_system.saves.iter().enumerate() {
+                        if ui.add_sized([240., 40.], egui::Button::new(RichText::new(["Load",name].join(" ")).heading())).clicked(){
+                            sim_params.save_id = i;
+                            state.menu = !state.menu;
+                            state.load_save = true;
+                        }
                     }
-                }
-                if save_system.saves.len() == 0{
-                    ui.label(RichText::new("No Saves").heading());
-                }
+                    if save_system.saves.len() == 0{
+                        ui.label(RichText::new("No Saves").heading());
+                    }
+                });
             });
         });
 }

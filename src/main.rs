@@ -12,13 +12,12 @@ use winit::{
     event::*,
     event_loop::EventLoop,
     keyboard::Key,
-    //window::WindowBuilder,
+    window::WindowBuilder,
 };
 use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::System;
 use winit::dpi::PhysicalSize;
-use winit::event_loop::ActiveEventLoop;
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use crate::environment::animal::Animals;
 use crate::environment::collisions::{DIV};
@@ -34,13 +33,11 @@ fn main() {
     pollster::block_on(run());
 }
 
-//const WORLD_WIDTH: f32 = 120.0;
-//const WORLD_HEIGHT: f32 = 120.0;
-
 pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
-  //  let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
-    let window = Arc::new(ActiveEventLoop::create_window().unwrap());
+    let window = Arc::new(WindowBuilder::new().with_title("EcoSim").with_inner_size(PhysicalSize::new(1200, 800)).build(&event_loop).unwrap());
+   // let window = Arc::new(ActiveEventLoop::create_window().unwrap());
+
     let mut save_syatem = SaveSystem::default();
     let mut renderer = Renderer::new(window).await;
     let mut step = 0;
