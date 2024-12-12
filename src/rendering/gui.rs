@@ -324,7 +324,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                             ui.label(RichText::new(format!("Rock vision: {:.2}", animal.senses.rock_vision)));
                         });
                         ui.vertical(|ui|{
-                            ui.label(RichText::new(format!("Offspring Invest: {:.2}", animal.reproduction_stats.offspring_investment)));
+                            ui.label(RichText::new(format!("Offspring invest: {:.2}", animal.reproduction_stats.offspring_investment)));
                             ui.label(RichText::new(format!("Aggression: {:.2}", animal.combat_stats.aggression)));
                          //   ui.label(RichText::new(format!("Libido: {:.2}", animal.reproduction_stats.birth_desire)));
                         });
@@ -336,21 +336,21 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     });
                 }
                 else{
-                    ui.label(RichText::new("No Animal Selected"));
+                    ui.label(RichText::new("No animal selected"));
                 }
             });
     }
     if toggles.population_graphs {
-        egui::Window::new("Population Graphs")
+        egui::Window::new("Population graphs")
             .default_width(550.0)
             .resizable(true)
             .collapsible(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Animals"),|ui|{
-                    let animals =Line::new(PlotPoints::new(stats.animal_pop.clone())).color(Color32::WHITE);
-                    let herb = Line::new(PlotPoints::new(stats.herb_pop.clone())).color(Color32::GREEN);
-                    let omni = Line::new(PlotPoints::new(stats.omni_pop.clone())).color(Color32::GOLD);
-                    let carn = Line::new(PlotPoints::new(stats.carn_pop.clone())).color(Color32::RED);
+                    let animals =Line::new(PlotPoints::new(stats.populations.animals.clone())).color(Color32::WHITE);
+                    let herb = Line::new(PlotPoints::new(stats.populations.herbivores.clone())).color(Color32::GREEN);
+                    let omni = Line::new(PlotPoints::new(stats.populations.omnivores.clone())).color(Color32::GOLD);
+                    let carn = Line::new(PlotPoints::new(stats.populations.carnivores.clone())).color(Color32::RED);
 
                     ui.horizontal(|ui|{
                         ui.vertical(|ui|{
@@ -369,7 +369,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
 
                 ui.collapsing(RichText::new("Plants"),|ui|{
-                    let plants =Line::new(PlotPoints::new(stats.plant_pop.clone())).color(Color32::GREEN);
+                    let plants =Line::new(PlotPoints::new(stats.populations.plants.clone())).color(Color32::GREEN);
 
                     Plot::new("plant population graph").view_aspect(2.0).show(ui, |plot_ui| {
                         plot_ui.line(plants);
@@ -378,7 +378,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.separator();
 
-                if ui.selectable_label(false, RichText::new("Clear Graphs")).clicked(){
+                if ui.selectable_label(false, RichText::new("Clear graphs")).clicked(){
                     stats.clear_graph_data();
                 }
             });
@@ -389,10 +389,10 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .collapsible(false)
             .show(ui, |ui| {
                 ui.label(RichText::new(format!("FPS: {}",stats.fps)));
-                ui.label(RichText::new(format!("Total CPU Usage: {:.2}%",stats.tot_cpu_usage)));
-                ui.label(RichText::new(format!("Total Memory: {} mB",stats.tot_mem/8000000)));
-                ui.label(RichText::new(format!("Used Memory: {} mB",stats.used_mem/8000000)));
-                ui.collapsing(RichText::new("CPU Usage Breakdown"),|ui|{
+                ui.label(RichText::new(format!("Total CPU usage: {:.2}%",stats.tot_cpu_usage)));
+                ui.label(RichText::new(format!("Total memory: {} mB",stats.tot_mem/8000000)));
+                ui.label(RichText::new(format!("Used memory: {} mB",stats.used_mem/8000000)));
+                ui.collapsing(RichText::new("CPU usage breakdown"),|ui|{
                     stats.cpu_usages.iter().enumerate().for_each(|(i,usage)|{
                         ui.label(RichText::new(format!("CPU {} Usage: {:.1}%",i+1,usage)));
                     })
@@ -406,7 +406,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .collapsible(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
-                    let bars = stats.diet_dist.iter().enumerate().map(|(i,diet)|{
+                    let bars = stats.distributions.diet.iter().enumerate().map(|(i,diet)|{
                         let bar =Bar::new(i as f64 + 1.0, *diet);
                         let bar = bar.fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,80));
                         bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
@@ -417,10 +417,22 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         plot_ui.bar_chart(test);
                     });
                 });
+                ui.collapsing(RichText::new("Speed"),|ui|{
+                    let bars = stats.distributions.speed.iter().enumerate().map(|(i,speed)|{
+                        let bar =Bar::new(i as f64 + 1.0, 1.);
+                        let bar = bar.fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,80));
+                        bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
+                    }).collect();
+                    let test = BarChart::new(bars);
+
+                    Plot::new("Speed").view_aspect(2.0).show(ui, |plot_ui| {
+                        plot_ui.bar_chart(test);
+                    });
+                });
             });
     }
     if toggles.simulation_settings {
-        egui::Window::new("Simulation Settings")
+        egui::Window::new("Simulation settings")
             .resizable(false)
             .collapsible(false)
             .show(ui, |ui| {
@@ -429,13 +441,13 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     ui.add(egui::DragValue::new(&mut sim_params.simulation.steps_per_frame).clamp_range(0..=200));
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Stats Refresh Time");
+                    ui.label("Stats refresh time");
                     ui.add(egui::DragValue::new(&mut stats.step_time).clamp_range(1..=600));
                 });
             });
     }
     if toggles.food_settings {
-        egui::Window::new("Food Settings")
+        egui::Window::new("Food settings")
             .resizable(false)
             .default_width(0.0)
             .collapsible(false)
@@ -490,7 +502,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             });
     }
     if toggles.animal_settings {
-        egui::Window::new("Animal Settings")
+        egui::Window::new("Animal settings")
             .resizable(false)
             .collapsible(false)
             .default_width(0.0)
@@ -499,7 +511,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.separator();
 
                 ui.horizontal(|ui|{
-                    ui.label("Brain mutation bate");
+                    ui.label("Brain mutation rate");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.brain_mutation_rate).clamp_range(0..=100));
                 });
                 ui.horizontal(|ui|{
@@ -525,7 +537,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
                 ui.horizontal(|ui|{
                     ui.label("Carnivore efficiency");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.carnivory_efficiency).clamp_range(0.0..=1.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.carnivory_efficiency).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
                 });
 
                 ui.separator();
@@ -534,19 +546,19 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui|{
                     ui.label("Speed energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Size energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Attack energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Vision energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_energy_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
 
                 ui.separator();
@@ -555,33 +567,42 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui|{
                     ui.label("Speed protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Size protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Attack protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                });
+
+                ui.separator();
+                ui.heading("Movement");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Movement speed");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.movement_speed).clamp_range(0.5..=4.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
-                    ui.label("Vision protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_protein_cost).clamp_range(0.0..=5.0).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                    ui.label("Turning speed");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.turning_speed).clamp_range(0.5..=4.0).speed(0.01).max_decimals(2));
                 });
             });
     }
     if toggles.build_settings {
-        egui::Window::new("Build Settings")
+        egui::Window::new("Build settings")
             .resizable(false)
             .collapsible(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui|{
-                    ui.label("Build Mode");
+                    ui.label("Build mode");
                     ui.add(egui::Checkbox::new(&mut sim_params.build.build_mode,""));
                 });
                 ui.horizontal(|ui|{
-                    ui.label("Pen Size");
+                    ui.label("Pen size");
                     ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
                 });
             });
@@ -597,13 +618,13 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
                     state.menu = !state.menu;
                     state.new = true;
                 }
-                    ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World Size: "));
+                    ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: "));
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate Terrain"));
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate terrain"));
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate Plants"));
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate plants"));
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate Fruit"));
+                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate fruit"));
 
                 egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
                     for (i,name) in save_system.saves.iter().enumerate() {

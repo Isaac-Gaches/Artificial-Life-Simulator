@@ -243,7 +243,7 @@ impl Animals{
             }*/
 
             let start = animal.body.position[0];
-            animal.body.position[0] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.cos() * animal.combat_stats.speed;
+            animal.body.position[0] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.cos() * animal.combat_stats.speed * sim_params.animals.movement_speed;
 
             let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
             if arc.rocks[i] > 0{
@@ -251,15 +251,15 @@ impl Animals{
             }
 
             let start = animal.body.position[1];
-            animal.body.position[1] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.sin() * animal.combat_stats.speed;
+            animal.body.position[1] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.sin() * animal.combat_stats.speed * sim_params.animals.movement_speed;
 
             let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
             if arc.rocks[i] > 0{
                 animal.body.position[1] = start;
             }
 
-            animal.body.rotation += response.index(1).min(1.0) * 0.04 * animal.combat_stats.speed;
-            animal.body.rotation -= response.index(2).min(1.0) * 0.04 * animal.combat_stats.speed;
+            animal.body.rotation += response.index(1).min(1.0) * 0.04 * animal.combat_stats.speed * sim_params.animals.turning_speed;
+            animal.body.rotation -= response.index(2).min(1.0) * 0.04 * animal.combat_stats.speed * sim_params.animals.turning_speed;
             animal.combat_stats.aggression = response.index(3).min(1.0);
            // animal.reproduction_stats.birth_desire = response.index(4).min(1.0);
 
@@ -278,7 +278,7 @@ impl Animals{
                 animal.combat_stats.attack = animal.max_stats.attack * (0.5 + animal.maturity * 0.05);
                 animal.combat_stats.speed = animal.max_stats.speed * (0.5 + animal.maturity * 0.05);
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);
-                animal.lean_mass = animal.combat_stats.attack * 5.0 + animal.combat_stats.speed * 8.0 + animal.body.scale * 30.;
+                animal.lean_mass = sim_params.animals.attack_protein_cost * animal.combat_stats.attack * 2.0 + sim_params.animals.speed_protein_cost * animal.combat_stats.speed * 4.0 + sim_params.animals.size_protein_cost * animal.body.scale * 32.;
                 animal.resources.max_protein = animal.body.scale * 400.;
                 animal.resources.max_energy = animal.body.scale *10000.;
             }

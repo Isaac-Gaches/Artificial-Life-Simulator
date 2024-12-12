@@ -3,48 +3,85 @@ use sysinfo::System;
 use crate::environment::animal::Animal;
 #[derive(Serialize,Deserialize,Clone)]
 pub struct Stats{
+    pub populations: Populations,
+    pub distributions: Distributions,
     pub fps: usize,
-    pub animal_pop: Vec<[f64;2]>,
-    pub plant_pop: Vec<[f64;2]>,
-    pub herb_pop: Vec<[f64;2]>,
-    pub omni_pop: Vec<[f64;2]>,
-    pub carn_pop: Vec<[f64;2]>,
-  //  system: System,
     pub used_mem: u64,
     pub tot_mem: u64,
     pub cpu_usages: Vec<f32>,
     pub tot_cpu_usage: f32,
     step: usize,
     pub step_time: usize,
-    pub diet_dist: Vec<f64>,
 }
+#[derive(Serialize,Deserialize,Clone)]
+pub struct Distributions{
+    pub diet: Vec<f64>,
+    pub speed: Vec<f64>,
+    pub size: Vec<f64>,
+    pub attack: Vec<f64>,
+    pub fruit_vision: Vec<f64>,
+    pub plant_vision: Vec<f64>,
+    pub animal_vision: Vec<f64>,
+    pub rock_vision: Vec<f64>,
+}
+#[derive(Serialize,Deserialize,Clone)]
+pub struct Populations{
+    pub animals: Vec<[f64;2]>,
+    pub plants: Vec<[f64;2]>,
+    pub herbivores: Vec<[f64;2]>,
+    pub omnivores: Vec<[f64;2]>,
+    pub carnivores: Vec<[f64;2]>,
+    pub slow: Vec<[f64;2]>,
+    pub moderate_speed: Vec<[f64;2]>,
+    pub fast: Vec<[f64;2]>,
+    pub small: Vec<[f64;2]>,
+    pub medium: Vec<[f64;2]>,
+    pub large: Vec<[f64;2]>,
+}
+
 impl Default for Stats{
     fn default() -> Self {
         Self{
+            populations: Populations{
+                animals: vec![],
+                plants: vec![],
+                herbivores: vec![],
+                omnivores: vec![],
+                carnivores: vec![],
+                slow: vec![],
+                moderate_speed: vec![],
+                fast: vec![],
+                small: vec![],
+                medium: vec![],
+                large: vec![],
+            },
+            distributions: Distributions{
+                diet: vec![0.;11],
+                speed: vec![0.;11],
+                size: vec![0.;11],
+                attack: vec![0.;11],
+                fruit_vision: vec![0.;13],
+                plant_vision: vec![0.;13],
+                animal_vision: vec![0.;13],
+                rock_vision: vec![0.;13],
+            },
             fps: 0,
-            animal_pop: vec![],
-            plant_pop: vec![],
-            herb_pop: vec![],
-            omni_pop: vec![],
-            carn_pop: vec![],
-          //  system: Default::default(),
             used_mem: 0,
             tot_mem: 0,
             cpu_usages: vec![],
             tot_cpu_usage: 0.0,
             step: 0,
             step_time: 1,
-            diet_dist: vec![0.;11],
         }
     }
 }
 impl Stats{
     pub fn clear_graph_data(&mut self){
-        self.animal_pop = vec![];
-        self.plant_pop = vec![];
-        self.herb_pop = vec![];
-        self.omni_pop = vec![];
-        self.carn_pop = vec![];
+        self.populations.animals = vec![];
+        self.populations.plants = vec![];
+        self.populations.herbivores = vec![];
+        self.populations.omnivores = vec![];
+        self.populations.carnivores = vec![];
     }
     pub fn update_diagnostics(&mut self, frames: usize,system: &mut System){
         system.refresh_memory();
@@ -57,13 +94,25 @@ impl Stats{
     }
     pub fn update_graphs(&mut self, animal_population: usize, plant_population: usize, animals: &[Animal]){
         if self.step % self.step_time == 0 {
-            self.animal_pop.push([self.step as f64, animal_population as f64]);
-            self.plant_pop.push([self.step as f64, plant_population as f64]);
-            self.diet_dist = vec![0.;11];
+            self.populations.animals.push([self.step as f64, animal_population as f64]);
+            self.populations.plants.push([self.step as f64, plant_population as f64]);
+            self.distributions.diet = vec![0.;11];
             let (mut herb,mut omni,mut carn) = (0.,0.,0.);
             animals.iter().for_each(|animal|{
                 let diet = (animal.combat_stats.carnivore_factor * 10.).round() as usize;
-                self.diet_dist[diet] += 1.;
+                self.distributions.diet[diet] += 1.;
+                if diet < 4{
+                    herb += 1.0;
+                }
+                else if diet < 7{
+                    omni += 1.0;
+                }
+                else{
+                    carn += 1.0;
+                }
+
+                let speed = (animal.combat_stats.speed * 2.).round() as usize;
+                self.distributions.diet[diet] += 1.;
                 if diet < 4{
                     herb += 1.0;
                 }
@@ -74,9 +123,9 @@ impl Stats{
                     carn += 1.0;
                 }
             });
-            self.herb_pop.push([self.step as f64, herb]);
-            self.omni_pop.push([self.step as f64, omni]);
-            self.carn_pop.push([self.step as f64, carn]);
+            self.populations.herbivores.push([self.step as f64, herb]);
+            self.populations.omnivores.push([self.step as f64, omni]);
+            self.populations.carnivores.push([self.step as f64, carn]);
         }
         self.step+=1
     }

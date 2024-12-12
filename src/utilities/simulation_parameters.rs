@@ -51,7 +51,8 @@ pub struct AnimalSettings{
     pub speed_protein_cost: f32,
     pub size_protein_cost: f32,
     pub attack_protein_cost: f32,
-    pub vision_protein_cost: f32,
+    pub movement_speed: f32,
+    pub turning_speed: f32,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct WorldSettings{
@@ -92,7 +93,8 @@ impl Default for SimParams{
                 speed_protein_cost: 1.0,
                 size_protein_cost: 1.0,
                 attack_protein_cost: 1.0,
-                vision_protein_cost: 1.0,
+                movement_speed: 1.0,
+                turning_speed: 1.0,
             },
             build: BuildSettings {
                 pen_size: 0,
