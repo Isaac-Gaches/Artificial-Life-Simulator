@@ -16,19 +16,24 @@ use crate::utilities::statistics::Stats;
 #[derive(Default)]
 pub struct Toggles{
     population_graphs: bool,
-    //plant_settings: bool,
-    //fruit_settings: bool,
     food_settings:bool,
     animal_settings: bool,
     simulation_settings: bool,
     build_settings: bool,
+    diagnostics: bool,
+    distributions: bool,
+    animal_inspect: bool,
+    populations: Populations,
+}
+#[derive(Default)]
+pub struct Populations{
     animals: bool,
     herbivores: bool,
     omnivores: bool,
     carnivores: bool,
-    diagnostics: bool,
-    distributions: bool,
-    animal_inspect: bool
+    slow: bool,
+    moderate_speed: bool,
+    fast: bool,
 }
 pub struct EguiRenderer {
     pub context: Context,
@@ -63,7 +68,7 @@ impl EguiRenderer {
         let egui_renderer = Renderer::new(device, output_color_format, output_depth_format, msaa_samples);
 
         let mut toggles = Toggles::default();
-        toggles.animals = true;
+        toggles.populations.animals = true;
 
         EguiRenderer {
             context: egui_context,
@@ -348,22 +353,35 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Animals"),|ui|{
                     let animals =Line::new(PlotPoints::new(stats.populations.animals.clone())).color(Color32::WHITE);
+
                     let herb = Line::new(PlotPoints::new(stats.populations.herbivores.clone())).color(Color32::GREEN);
                     let omni = Line::new(PlotPoints::new(stats.populations.omnivores.clone())).color(Color32::GOLD);
                     let carn = Line::new(PlotPoints::new(stats.populations.carnivores.clone())).color(Color32::RED);
 
+                    let slow = Line::new(PlotPoints::new(stats.populations.slow.clone())).color(Color32::DARK_BLUE);
+                    let moderate = Line::new(PlotPoints::new(stats.populations.moderate_speed.clone())).color(Color32::BLUE);
+                    let fast = Line::new(PlotPoints::new(stats.populations.fast.clone())).color(Color32::LIGHT_BLUE);
+
                     ui.horizontal(|ui|{
                         ui.vertical(|ui|{
-                            ui.add(egui::Checkbox::new(&mut toggles.animals,"All"));
-                            ui.add(egui::Checkbox::new(&mut toggles.herbivores,"Herbivore"));
-                            ui.add(egui::Checkbox::new(&mut toggles.omnivores,"Omnivores"));
-                            ui.add(egui::Checkbox::new(&mut toggles.carnivores,"Carnivores"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.animals,"All"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.herbivores,"Herbivore"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.omnivores,"Omnivores"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.carnivores,"Carnivores"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.slow,"Slow"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.moderate_speed,"Moderate speed"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.fast,"Fast"));
                         });
                         Plot::new("animal population graph").view_aspect(2.0).show(ui, |plot_ui| {
-                            if toggles.animals{ plot_ui.line(animals); }
-                            if toggles.herbivores{ plot_ui.line(herb); }
-                            if toggles.omnivores{ plot_ui.line(omni); }
-                            if toggles.carnivores{ plot_ui.line(carn); }
+                            if toggles.populations.animals{ plot_ui.line(animals); }
+
+                            if toggles.populations.herbivores{ plot_ui.line(herb); }
+                            if toggles.populations.omnivores{ plot_ui.line(omni); }
+                            if toggles.populations.carnivores{ plot_ui.line(carn); }
+
+                            if toggles.populations.slow{ plot_ui.line(slow); }
+                            if toggles.populations.moderate_speed{ plot_ui.line(moderate); }
+                            if toggles.populations.fast{ plot_ui.line(fast); }
                         });
                     });
                 });
@@ -407,9 +425,8 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
                     let bars = stats.distributions.diet.iter().enumerate().map(|(i,diet)|{
-                        let bar =Bar::new(i as f64 + 1.0, *diet);
-                        let bar = bar.fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,80));
-                        bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
+                        Bar::new(i as f64 + 1.0, *diet).fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,150)).width(1.0)
+                     //   bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
                     }).collect();
                     let test = BarChart::new(bars);
 
@@ -419,9 +436,8 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
                 ui.collapsing(RichText::new("Speed"),|ui|{
                     let bars = stats.distributions.speed.iter().enumerate().map(|(i,speed)|{
-                        let bar =Bar::new(i as f64 + 1.0, 1.);
-                        let bar = bar.fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,80));
-                        bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
+                        Bar::new((i as f64 + 1.0) * 0.4, *speed).fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,150)).width(0.4)
+                      //  bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
                     }).collect();
                     let test = BarChart::new(bars);
 

@@ -82,6 +82,9 @@ impl Stats{
         self.populations.herbivores = vec![];
         self.populations.omnivores = vec![];
         self.populations.carnivores = vec![];
+        self.populations.slow = vec![];
+        self.populations.moderate_speed = vec![];
+        self.populations.fast = vec![];
     }
     pub fn update_diagnostics(&mut self, frames: usize,system: &mut System){
         system.refresh_memory();
@@ -97,7 +100,9 @@ impl Stats{
             self.populations.animals.push([self.step as f64, animal_population as f64]);
             self.populations.plants.push([self.step as f64, plant_population as f64]);
             self.distributions.diet = vec![0.;11];
+            self.distributions.speed = vec![0.;11];
             let (mut herb,mut omni,mut carn) = (0.,0.,0.);
+            let (mut slow,mut moderate,mut fast) = (0.,0.,0.);
             animals.iter().for_each(|animal|{
                 let diet = (animal.combat_stats.carnivore_factor * 10.).round() as usize;
                 self.distributions.diet[diet] += 1.;
@@ -111,21 +116,25 @@ impl Stats{
                     carn += 1.0;
                 }
 
-                let speed = (animal.combat_stats.speed * 2.).round() as usize;
-                self.distributions.diet[diet] += 1.;
-                if diet < 4{
-                    herb += 1.0;
+                let speed = (animal.combat_stats.speed * 2.5).round() as usize;
+                self.distributions.speed[speed] += 1.;
+                if speed < 3{
+                    slow += 1.0;
                 }
-                else if diet < 7{
-                    omni += 1.0;
+                else if speed < 6{
+                    moderate += 1.0;
                 }
                 else{
-                    carn += 1.0;
+                    fast += 1.0;
                 }
             });
             self.populations.herbivores.push([self.step as f64, herb]);
             self.populations.omnivores.push([self.step as f64, omni]);
             self.populations.carnivores.push([self.step as f64, carn]);
+
+            self.populations.slow.push([self.step as f64, slow]);
+            self.populations.moderate_speed.push([self.step as f64, moderate]);
+            self.populations.fast.push([self.step as f64, fast]);
         }
         self.step+=1
     }
