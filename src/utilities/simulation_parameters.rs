@@ -45,6 +45,7 @@ pub struct AnimalSettings{
     pub carnivory_efficiency: f32,
     pub herbivory_efficiency: f32,
     pub speed_energy_cost: f32,
+    pub turning_energy_cost: f32,
     pub size_energy_cost: f32,
     pub attack_energy_cost: f32,
     pub vision_energy_cost: f32,
@@ -53,6 +54,10 @@ pub struct AnimalSettings{
     pub attack_protein_cost: f32,
     pub movement_speed: f32,
     pub turning_speed: f32,
+    pub reproduction_time: f32,
+    pub reproduction_protein_cost: f32,
+    pub reproduction_energy_cost: f32,
+    pub lifespan: f32,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct WorldSettings{
@@ -87,6 +92,7 @@ impl Default for SimParams{
                 carnivory_efficiency: 1.0,
                 herbivory_efficiency: 1.0,
                 speed_energy_cost: 1.0,
+                turning_energy_cost: 1.0,
                 size_energy_cost: 1.0,
                 attack_energy_cost: 1.0,
                 vision_energy_cost: 1.0,
@@ -95,6 +101,10 @@ impl Default for SimParams{
                 attack_protein_cost: 1.0,
                 movement_speed: 1.0,
                 turning_speed: 1.0,
+                reproduction_time: 1.0,
+                reproduction_protein_cost: 1.0,
+                reproduction_energy_cost: 1.0,
+                lifespan: 1.0,
             },
             build: BuildSettings {
                 pen_size: 0,

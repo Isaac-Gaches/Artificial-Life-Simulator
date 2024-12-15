@@ -42,6 +42,8 @@ impl Animal{
         let mutation_rate = (sim_params.animals.physical_mutation_rate/100.) as f64;
 
         new_animal.maturity = 0.;
+        new_animal.generation = self.generation+1;
+        new_animal.age = 0.;
         new_animal.resources.protein = self.reproduction_stats.offspring_investment * self.lean_mass * 0.2;
         new_animal.resources.energy = 100. + self.reproduction_stats.offspring_investment * 20.;
 
@@ -69,8 +71,6 @@ impl Animal{
         new_animal.lean_mass = new_animal.combat_stats.attack * 5.0 + new_animal.combat_stats.speed * 8.0 + new_animal.body.scale * 30.;
         new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
 
-        new_animal.generation = self.generation+1;
-
         new_animal
     }
     fn internal_inputs(&self, mut input: Vec<f32>) -> Vec<f32>{
@@ -95,7 +95,7 @@ pub struct Brain{
 #[derive(Clone,Serialize,Deserialize)]
 pub struct ReproductionStats{
     pub offspring_investment: f32,
-    birth_timer: f32,
+    pub birth_timer: f32,
     //pub birth_desire: f32,
 }
 #[derive(Clone,Serialize,Deserialize)]
@@ -195,10 +195,10 @@ impl Animals{
 
             animal.brain.network.input(input);
 
-            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (animal.reproduction_stats.offspring_investment * 20.) + animal.resources.max_energy * 0.3 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment{
-                animal.reproduction_stats.birth_timer = 10. + animal.reproduction_stats.offspring_investment * 4.;
-                animal.resources.energy -= 100. + (animal.reproduction_stats.offspring_investment * 20.);
-                animal.resources.protein -= animal.lean_mass*0.1*animal.reproduction_stats.offspring_investment;
+            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (100. + (animal.reproduction_stats.offspring_investment * 20.)) * sim_params.animals.reproduction_energy_cost + animal.resources.max_energy * 0.3 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment*sim_params.animals.reproduction_energy_cost{
+                animal.reproduction_stats.birth_timer = (10. + animal.reproduction_stats.offspring_investment * 4.) * sim_params.animals.reproduction_time;
+                animal.resources.energy -= (100. + (animal.reproduction_stats.offspring_investment * 20.)) * sim_params.animals.reproduction_energy_cost;
+                animal.resources.protein -= animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment * sim_params.animals.reproduction_protein_cost;
 
                 let mut offspring = animal.offspring(sim_params,species_list);
                 offspring.id = self.next_free_id;
@@ -266,7 +266,7 @@ impl Animals{
             animal.resources.energy -= //1 energy per sec at min ish
                 animal.body.scale * 0.042 * sim_params.animals.size_energy_cost + // 0.08 -> 0.5
                 response.index(0) * animal.combat_stats.speed * 0.0067 * sim_params.animals.speed_energy_cost + // 0.5 -> 4
-                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.0067 * sim_params.animals.speed_energy_cost + // 0.5 -> 4
+                (response.index(1)+response.index(2)) * animal.combat_stats.speed * 0.0067 * sim_params.animals.turning_energy_cost + // 0.5 -> 4
                 0.001 * animal.combat_stats.aggression * animal.combat_stats.attack * sim_params.animals.attack_energy_cost + // 0 -> 10
                 (animal.senses.animal_vision + animal.senses.rock_vision + animal.senses.plant_vision + animal.senses.fruit_vision) * 0.0001 * sim_params.animals.vision_energy_cost; // 0 -> 48
 
@@ -304,6 +304,9 @@ impl Animals{
             }
 
             animal.age+=1./60.;
+            if animal.age > animal.max_stats.size * 5760. * sim_params.animals.lifespan{
+                animal.resources.energy = 0.;
+            }
         });
     }
 

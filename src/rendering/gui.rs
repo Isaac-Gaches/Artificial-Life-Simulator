@@ -314,13 +314,13 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                             ui.label(RichText::new(format!("Species: {}", animal.species_id)));
                             ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
                             ui.label(RichText::new(format!("Age (min): {:.2}", animal.age/60.)));
-                            ui.label(RichText::new(format!("Mass: {:.2}", animal.lean_mass)));
+                            ui.label(RichText::new(format!("Generation: {}", animal.generation)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Energy: {:.2}", animal.resources.energy)));
                             ui.label(RichText::new(format!("Protein: {:.2}", animal.resources.protein)));
-                            ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
-                            ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
+                            ui.label(RichText::new(format!("Mass: {:.2}", animal.lean_mass)));
+                            ui.label(RichText::new(format!("Hue: {:.2}", animal.hue)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Animal vision: {:.2}", animal.senses.animal_vision)));
@@ -330,13 +330,14 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Offspring invest: {:.2}", animal.reproduction_stats.offspring_investment)));
+                            ui.label(RichText::new(format!("Birth recovery (s): {:.2}", animal.reproduction_stats.birth_timer)));
                             ui.label(RichText::new(format!("Aggression: {:.2}", animal.combat_stats.aggression)));
-                         //   ui.label(RichText::new(format!("Libido: {:.2}", animal.reproduction_stats.birth_desire)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Speed: {:.2}", animal.combat_stats.speed)));
                             ui.label(RichText::new(format!("Size: {:.2}", animal.body.scale)));
-                            ui.label(RichText::new(format!("Hue: {:.2}", animal.hue)));
+                            ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
+                            ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
                         });
                     });
                 }
@@ -562,19 +563,23 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui|{
                     ui.label("Speed energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_energy_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Turning energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.turning_energy_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Size energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_energy_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Attack energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_energy_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Vision energy cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.vision_energy_cost).clamp_range(0.0..=205.0).speed(0.01).max_decimals(2));
                 });
 
                 ui.separator();
@@ -583,15 +588,15 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui|{
                     ui.label("Speed protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speed_protein_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Size protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.size_protein_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Attack protein cost");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.attack_protein_cost).clamp_range(0.0..=20.0).speed(0.01).max_decimals(2));
                 });
 
                 ui.separator();
@@ -600,11 +605,37 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                 ui.horizontal(|ui|{
                     ui.label("Movement speed");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.movement_speed).clamp_range(0.5..=4.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.movement_speed).clamp_range(0.0..=4.0).speed(0.01).max_decimals(2));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Turning speed");
-                    ui.add(egui::DragValue::new(&mut sim_params.animals.turning_speed).clamp_range(0.5..=4.0).speed(0.01).max_decimals(2));
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.turning_speed).clamp_range(0.0..=4.0).speed(0.01).max_decimals(2));
+                });
+
+                ui.separator();
+                ui.heading("Reproduction");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Reproduction energy cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.reproduction_energy_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Reproduction protein cost");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.reproduction_protein_cost).clamp_range(0.0..=5.0).speed(0.01).max_decimals(2));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Reproduction time");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.reproduction_time).clamp_range(0.0..=20.0).speed(0.1).max_decimals(1));
+                });
+
+                ui.separator();
+                ui.heading("Other");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Lifespan multiplier");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.lifespan).clamp_range(0.0..=100.0));
                 });
             });
     }
