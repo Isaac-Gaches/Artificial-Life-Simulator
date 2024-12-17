@@ -34,6 +34,9 @@ pub struct Populations{
     slow: bool,
     moderate_speed: bool,
     fast: bool,
+    small: bool,
+    medium: bool,
+    large: bool,
 }
 pub struct EguiRenderer {
     pub context: Context,
@@ -363,15 +366,25 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     let moderate = Line::new(PlotPoints::new(stats.populations.moderate_speed.clone())).color(Color32::BLUE);
                     let fast = Line::new(PlotPoints::new(stats.populations.fast.clone())).color(Color32::LIGHT_BLUE);
 
+                    let small = Line::new(PlotPoints::new(stats.populations.small.clone())).color(Color32::YELLOW);
+                    let medium = Line::new(PlotPoints::new(stats.populations.medium.clone())).color(Color32::from_rgb(255,180,25));
+                    let large = Line::new(PlotPoints::new(stats.populations.large.clone())).color(Color32::from_rgb(255,80,25));
+
                     ui.horizontal(|ui|{
                         ui.vertical(|ui|{
                             ui.add(egui::Checkbox::new(&mut toggles.populations.animals,"All"));
+                           // ui.separator();
                             ui.add(egui::Checkbox::new(&mut toggles.populations.herbivores,"Herbivore"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.omnivores,"Omnivores"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.carnivores,"Carnivores"));
+                           // ui.separator();
                             ui.add(egui::Checkbox::new(&mut toggles.populations.slow,"Slow"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.moderate_speed,"Moderate speed"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.fast,"Fast"));
+                           // ui.separator();
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.small,"Small"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.medium,"Medium"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.large,"Large"));
                         });
                         Plot::new("animal population graph").view_aspect(2.0).show(ui, |plot_ui| {
                             if toggles.populations.animals{ plot_ui.line(animals); }
@@ -383,6 +396,10 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                             if toggles.populations.slow{ plot_ui.line(slow); }
                             if toggles.populations.moderate_speed{ plot_ui.line(moderate); }
                             if toggles.populations.fast{ plot_ui.line(fast); }
+
+                            if toggles.populations.small{ plot_ui.line(small); }
+                            if toggles.populations.medium{ plot_ui.line(medium); }
+                            if toggles.populations.large{ plot_ui.line(large); }
                         });
                     });
                 });
@@ -426,24 +443,35 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
                     let bars = stats.distributions.diet.iter().enumerate().map(|(i,diet)|{
-                        Bar::new(i as f64 + 1.0, *diet).fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,150)).width(1.0)
-                     //   bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
+                        Bar::new((i as f64 + 1.0) * 0.1, *diet).fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,80)).width(0.1 * 0.8)
+                            .stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
                     }).collect();
-                    let test = BarChart::new(bars);
+                    let chart = BarChart::new(bars);
 
                     Plot::new("Diet").view_aspect(2.0).show(ui, |plot_ui| {
-                        plot_ui.bar_chart(test);
+                        plot_ui.bar_chart(chart);
                     });
                 });
                 ui.collapsing(RichText::new("Speed"),|ui|{
                     let bars = stats.distributions.speed.iter().enumerate().map(|(i,speed)|{
-                        Bar::new((i as f64 + 1.0) * 0.4, *speed).fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,150)).width(0.4)
-                      //  bar.stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
+                        Bar::new((i as f64 + 1.0) * 0.4, *speed).fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,80)).width(0.4 * 0.8)
+                        .stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
                     }).collect();
-                    let test = BarChart::new(bars);
+                    let chart = BarChart::new(bars);
 
                     Plot::new("Speed").view_aspect(2.0).show(ui, |plot_ui| {
-                        plot_ui.bar_chart(test);
+                        plot_ui.bar_chart(chart);
+                    });
+                });
+                ui.collapsing(RichText::new("Size"),|ui|{
+                    let bars = stats.distributions.size.iter().enumerate().map(|(i,size)|{
+                        Bar::new((i as f64 + 1.0) * 0.05, *size).fill(Color32::from_rgba_unmultiplied(255,255-i as u8 * 18,25,80)).width(0.05 * 0.8)
+                        .stroke(Stroke::new(1., Color32::from_rgb(255,255-i as u8 * 18,25)))
+                    }).collect();
+                    let chart = BarChart::new(bars);
+
+                    Plot::new("Size").view_aspect(2.0).show(ui, |plot_ui| {
+                        plot_ui.bar_chart(chart);
                     });
                 });
             });
