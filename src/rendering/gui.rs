@@ -1,4 +1,4 @@
-use egui::{Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
+use egui::{Align, Align2, Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
 use egui::epaint::Shadow;
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -6,9 +6,11 @@ use egui_winit::State;
 use epaint::Pos2;
 use epaint::{CircleShape, Rect, Shape};
 use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::Animal;
+use crate::utilities::highlighter::Highlighter;
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
@@ -23,6 +25,7 @@ pub struct Toggles{
     diagnostics: bool,
     distributions: bool,
     animal_inspect: bool,
+    highlighter_settings: bool,
     populations: Populations,
 }
 #[derive(Default)]
@@ -31,12 +34,8 @@ pub struct Populations{
     herbivores: bool,
     omnivores: bool,
     carnivores: bool,
-    slow: bool,
-    moderate_speed: bool,
-    fast: bool,
-    small: bool,
-    medium: bool,
-    large: bool,
+    speed: bool,
+    size: bool,
 }
 pub struct EguiRenderer {
     pub context: Context,
@@ -93,16 +92,17 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,&Option<Animal>,&mut crate::utilities::state::State),
+        run_ui: impl FnOnce(&Context,&mut Stats,&mut Toggles,&mut SimParams,&Option<Animal>,&mut crate::utilities::state::State, &mut Highlighter),
         stats: &mut Stats,
         sim_params: &mut SimParams,
         animal: &Option<Animal>,
         state: &mut crate::utilities::state::State,
+        highlighter: &mut Highlighter
     ) {
         let raw_input = self.state.take_egui_input(window);
 
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,stats,&mut self.toggles,sim_params,animal,state);
+            run_ui(&self.context,stats,&mut self.toggles,sim_params,animal,state,highlighter);
         });
 
         self.state
@@ -145,14 +145,15 @@ impl EguiRenderer {
         window: &Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State,&mut SimParams,&SaveSystem),
+        run_ui: impl FnOnce(&Context,&mut crate::utilities::state::State,&mut SimParams,&mut SaveSystem,&PhysicalSize<u32>),
         state: &mut crate::utilities::state::State,
         sim_params: &mut SimParams,
-        save_system: &SaveSystem
+        save_system: &mut SaveSystem,
+        screen_size: &PhysicalSize<u32>
     ) {
         let raw_input = self.state.take_egui_input(window);
         let full_output = self.context.run(raw_input, |_ui| {
-            run_ui(&self.context,state,sim_params,save_system);
+            run_ui(&self.context,state,sim_params,save_system,screen_size);
         });
 
         self.state
@@ -189,7 +190,7 @@ impl EguiRenderer {
     }
 }
 
-pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: &Option<Animal>, state: &mut crate::utilities::state::State) {
+pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut SimParams,animal: &Option<Animal>, state: &mut crate::utilities::state::State,highlighter: &mut Highlighter) {
     egui::SidePanel::right("right")
         .resizable(false)
         .default_width(200.)
@@ -223,6 +224,9 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             if ui.selectable_label(toggles.build_settings, RichText::new("Build Settings").heading()).clicked(){
                 toggles.build_settings = !toggles.build_settings;
             }
+            if ui.selectable_label(toggles.highlighter_settings, RichText::new("Highlighter Settings").heading()).clicked(){
+                toggles.highlighter_settings = !toggles.highlighter_settings;
+            }
             if ui.selectable_label(toggles.simulation_settings, RichText::new("Simulation Settings").heading()).clicked(){
                 toggles.simulation_settings = !toggles.simulation_settings;
             }
@@ -231,7 +235,10 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             ui.heading("System");
             ui.separator();
 
-            if ui.selectable_label(false, RichText::new("Main Menu").heading()).clicked(){
+            if ui.add_sized([180.,30.],egui::Button::new(RichText::new("Save").heading())).clicked(){
+                state.save = true;
+            }
+            if ui.add_sized([180.,30.],egui::Button::new(RichText::new("Main Menu").heading())).clicked(){
                 state.menu = true;
             }
         });
@@ -362,53 +369,46 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     let omni = Line::new(PlotPoints::new(stats.populations.omnivores.clone())).color(Color32::GOLD);
                     let carn = Line::new(PlotPoints::new(stats.populations.carnivores.clone())).color(Color32::RED);
 
-                    let slow = Line::new(PlotPoints::new(stats.populations.slow.clone())).color(Color32::DARK_BLUE);
-                    let moderate = Line::new(PlotPoints::new(stats.populations.moderate_speed.clone())).color(Color32::BLUE);
-                    let fast = Line::new(PlotPoints::new(stats.populations.fast.clone())).color(Color32::LIGHT_BLUE);
-
-                    let small = Line::new(PlotPoints::new(stats.populations.small.clone())).color(Color32::YELLOW);
-                    let medium = Line::new(PlotPoints::new(stats.populations.medium.clone())).color(Color32::from_rgb(255,180,25));
-                    let large = Line::new(PlotPoints::new(stats.populations.large.clone())).color(Color32::from_rgb(255,80,25));
-
                     ui.horizontal(|ui|{
                         ui.vertical(|ui|{
                             ui.add(egui::Checkbox::new(&mut toggles.populations.animals,"All"));
-                           // ui.separator();
                             ui.add(egui::Checkbox::new(&mut toggles.populations.herbivores,"Herbivore"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.omnivores,"Omnivores"));
                             ui.add(egui::Checkbox::new(&mut toggles.populations.carnivores,"Carnivores"));
-                           // ui.separator();
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.slow,"Slow"));
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.moderate_speed,"Moderate speed"));
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.fast,"Fast"));
-                           // ui.separator();
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.small,"Small"));
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.medium,"Medium"));
-                            ui.add(egui::Checkbox::new(&mut toggles.populations.large,"Large"));
                         });
                         Plot::new("animal population graph").view_aspect(2.0).show(ui, |plot_ui| {
                             if toggles.populations.animals{ plot_ui.line(animals); }
-
                             if toggles.populations.herbivores{ plot_ui.line(herb); }
                             if toggles.populations.omnivores{ plot_ui.line(omni); }
                             if toggles.populations.carnivores{ plot_ui.line(carn); }
 
-                            if toggles.populations.slow{ plot_ui.line(slow); }
-                            if toggles.populations.moderate_speed{ plot_ui.line(moderate); }
-                            if toggles.populations.fast{ plot_ui.line(fast); }
-
-                            if toggles.populations.small{ plot_ui.line(small); }
-                            if toggles.populations.medium{ plot_ui.line(medium); }
-                            if toggles.populations.large{ plot_ui.line(large); }
                         });
                     });
                 });
 
-                ui.collapsing(RichText::new("Plants"),|ui|{
+                ui.collapsing(RichText::new("Averages"),|ui|{
+                    let speed = Line::new(PlotPoints::new(stats.populations.average_speed.clone())).color(Color32::LIGHT_BLUE);
+                    let size = Line::new(PlotPoints::new(stats.populations.average_size.clone())).color(Color32::from_rgb(255,180,25));
+
+                    ui.horizontal(|ui|{
+                        ui.vertical(|ui|{
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.speed,"Avg speed"));
+                            ui.add(egui::Checkbox::new(&mut toggles.populations.size,"Avg size"));
+                        });
+                        Plot::new("averages graph").view_aspect(2.0).show(ui, |plot_ui| {
+                            if toggles.populations.speed{ plot_ui.line(speed); }
+                            if toggles.populations.size{ plot_ui.line(size); }
+                        });
+                    });
+                });
+
+                ui.collapsing(RichText::new("Food"),|ui|{
                     let plants =Line::new(PlotPoints::new(stats.populations.plants.clone())).color(Color32::GREEN);
+                    let fruit =Line::new(PlotPoints::new(stats.populations.fruit.clone())).color(Color32::LIGHT_GREEN);
 
                     Plot::new("plant population graph").view_aspect(2.0).show(ui, |plot_ui| {
                         plot_ui.line(plants);
+                        plot_ui.line(fruit);
                     });
                 });
 
@@ -438,12 +438,11 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
     if toggles.distributions {
         egui::Window::new("Distributions")
             .default_width(550.0)
-            .resizable(false)
             .collapsible(false)
             .show(ui, |ui| {
                 ui.collapsing(RichText::new("Diet"),|ui|{
                     let bars = stats.distributions.diet.iter().enumerate().map(|(i,diet)|{
-                        Bar::new((i as f64 + 1.0) * 0.1, *diet).fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,80)).width(0.1 * 0.8)
+                        Bar::new(i as f64 * 0.1, *diet).fill(Color32::from_rgba_unmultiplied(i as u8 * 25,255 - i as u8 * 25,25,80)).width(0.08)
                             .stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 25,255 - i as u8 * 25,25)))
                     }).collect();
                     let chart = BarChart::new(bars);
@@ -454,7 +453,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
                 ui.collapsing(RichText::new("Speed"),|ui|{
                     let bars = stats.distributions.speed.iter().enumerate().map(|(i,speed)|{
-                        Bar::new((i as f64 + 1.0) * 0.4, *speed).fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,80)).width(0.4 * 0.8)
+                        Bar::new(i as f64 * 0.1, *speed).fill(Color32::from_rgba_unmultiplied(i as u8 * 15,i as u8 * 25,255,80)).width(0.08)
                         .stroke(Stroke::new(1., Color32::from_rgb(i as u8 * 15,i as u8 * 25,255)))
                     }).collect();
                     let chart = BarChart::new(bars);
@@ -465,7 +464,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 });
                 ui.collapsing(RichText::new("Size"),|ui|{
                     let bars = stats.distributions.size.iter().enumerate().map(|(i,size)|{
-                        Bar::new((i as f64 + 1.0) * 0.05, *size).fill(Color32::from_rgba_unmultiplied(255,255-i as u8 * 18,25,80)).width(0.05 * 0.8)
+                        Bar::new(i as f64 * 0.1, *size).fill(Color32::from_rgba_unmultiplied(255,255-i as u8 * 18,25,80)).width(0.08)
                         .stroke(Stroke::new(1., Color32::from_rgb(255,255-i as u8 * 18,25)))
                     }).collect();
                     let chart = BarChart::new(bars);
@@ -665,54 +664,101 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                     ui.label("Lifespan multiplier");
                     ui.add(egui::DragValue::new(&mut sim_params.animals.lifespan).clamp_range(0.0..=100.0));
                 });
+                ui.horizontal(|ui|{
+                    ui.label("Speciation threshold");
+                    ui.add(egui::DragValue::new(&mut sim_params.animals.speciation_threshold).clamp_range(0.0..=1.0).speed(0.01).max_decimals(2));
+                });
             });
     }
     if toggles.build_settings {
         egui::Window::new("Build settings")
             .resizable(false)
             .collapsible(false)
+            .default_width(0.0)
             .show(ui, |ui| {
+                ui.heading("Terrain");
+                ui.separator();
+
                 ui.horizontal(|ui|{
-                    ui.label("Build mode");
-                    ui.add(egui::Checkbox::new(&mut sim_params.build.build_mode,""));
+                    ui.label("Rock");
+                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_rock,""));
                 });
                 ui.horizontal(|ui|{
                     ui.label("Pen size");
                     ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
                 });
+
+                ui.separator();
+                ui.heading("Feeders");
+                ui.separator();
+
+                ui.horizontal(|ui|{
+                    ui.label("Plant generator");
+                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_plant_spawner,""));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Fruit generator");
+                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_fruit_spawner,""));
+                });
+            });
+    }
+    if toggles.highlighter_settings {
+        egui::Window::new("Highlighter settings")
+            .resizable(false)
+            .collapsible(false)
+            .default_width(0.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui|{
+                    ui.label("Show");
+                    ui.add(egui::Checkbox::new(&mut highlighter.speed.on,""));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Bounded");
+                    ui.add(egui::Checkbox::new(&mut highlighter.speed.bounded,""));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Lower bound");
+                    ui.add(egui::DragValue::new(&mut highlighter.speed.lower).clamp_range(0..=1).speed(0.01));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Upper bound");
+                    ui.add(egui::DragValue::new(&mut highlighter.speed.upper).clamp_range(0..=1).speed(0.01));
+                });
             });
     }
 }
 
-pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &SaveSystem) {
-    egui::CentralPanel::default()
-        .show(ui,|ui|{
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center),|ui|{
-                ui.heading(RichText::new("Main Menu").heading());
-                if ui.add_sized([240., 40.], egui::Button::new(RichText::new("New").heading())).clicked(){
-                    state.menu = !state.menu;
-                    state.new = true;
-                }
-                    ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: "));
+pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &mut SaveSystem, screen_size: &PhysicalSize<u32>) {
+    egui::Window::new("Main Menu").anchor(Align2::CENTER_CENTER, [0.,0.]).collapsible(false).resizable(false).fixed_pos([screen_size.width as f32/2. , screen_size.height as f32/2.]).show(ui, |ui|{
+        if ui.add_sized([240., 40.], egui::Button::new(RichText::new("New").heading())).clicked(){
+            state.menu = !state.menu;
+            state.new = true;
+        }
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate terrain"));
+        ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: ").clamp_range(0..=200));
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate plants"));
+        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate terrain"));
 
-                    ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate fruit"));
+        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate plants"));
 
-                egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
-                    for (i,name) in save_system.saves.iter().enumerate() {
-                        if ui.add_sized([240., 40.], egui::Button::new(RichText::new(["Load",name].join(" ")).heading())).clicked(){
-                            sim_params.save_id = i;
-                            state.menu = !state.menu;
-                            state.load_save = true;
-                        }
+        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate fruit"));
+
+        egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
+            for i in (0..save_system.saves.len()).rev() {
+                ui.horizontal(|ui|{
+                    if ui.add_sized([240., 40.], egui::Button::new(RichText::new(["Load",&save_system.saves[i]].join(" ")).heading())).clicked(){
+                        sim_params.save_id = i;
+                        state.menu = !state.menu;
+                        state.load_save = true;
                     }
-                    if save_system.saves.len() == 0{
-                        ui.label(RichText::new("No Saves").heading());
+                    if ui.add_sized([40., 40.], egui::Button::new(RichText::new("X"))).clicked(){
+                        save_system.delete(i);
                     }
                 });
-            });
+            }
+            if save_system.saves.len() == 0{
+                ui.label(RichText::new("No Saves").heading());
+            }
         });
+    });
 }

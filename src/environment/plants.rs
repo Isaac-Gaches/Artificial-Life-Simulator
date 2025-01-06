@@ -1,8 +1,9 @@
+use std::f32::consts::PI;
 use std::ops::{Index, IndexMut};
 use cgmath::num_traits::Float;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use crate::environment::collisions::{Collisions, DIV};
+use crate::environment::collisions::{CELL_SIZE, Collisions, DIV};
 use crate::environment::rocks::RockMap;
 use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
@@ -28,11 +29,27 @@ impl PlantSpawners {
     }
     pub fn random(&mut self,sim_params: &SimParams){
         for _ in 0..20{
-            let x = rand::thread_rng().gen_range(0.0..sim_params.world.width);
-            let y = rand::thread_rng().gen_range(0.0..sim_params.world.height);
+            let x = rand::thread_rng().gen_range(0..(sim_params.world.width*DIV) as u32);
+            let y = rand::thread_rng().gen_range(0..(sim_params.world.height*DIV) as u32);
 
-            self.bodies.push(Instance::new([x,y],[0.,0.,0.],0.,1.0));
+            self.bodies.push(Instance::new([x as f32 * CELL_SIZE+CELL_SIZE*0.5,y as f32 * CELL_SIZE+CELL_SIZE*0.5],[0.0, 0.7, 0.0],PI/4.,CELL_SIZE * 0.9));
         }
+    }
+    pub fn place(&mut self,pos: [f32;2]){
+        self.bodies.push(Instance::new([(pos[0]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5,(pos[1]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5],[0.0, 0.7, 0.0],PI/4.,CELL_SIZE * 0.9));
+    }
+    pub fn remove(&mut self,pos: [f32;2]){
+        (0..self.count()).rev().for_each(|i|{
+            if self.bodies[i].position == [(pos[0]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5,(pos[1]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5]{
+                self.bodies.remove(i);
+            }
+        });
+    }
+    pub fn instances(&self) -> &Vec<Instance>{
+        &self.bodies
+    }
+    pub fn count(&self)->usize{
+        self.bodies.len()
     }
 }
 impl Plants {

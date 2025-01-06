@@ -69,7 +69,7 @@ impl Animal{
         new_animal.body.scale = new_animal.max_stats.size * 0.5;
 
         new_animal.lean_mass = new_animal.combat_stats.attack * 5.0 + new_animal.combat_stats.speed * 8.0 + new_animal.body.scale * 30.;
-        new_animal.species_id = species_list.speciate(&new_animal,self.species_id);
+        new_animal.species_id = species_list.speciate(&new_animal,self.species_id,sim_params);
 
         new_animal
     }

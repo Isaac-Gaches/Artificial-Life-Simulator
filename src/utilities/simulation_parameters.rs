@@ -18,7 +18,9 @@ pub struct SimulationSettings {
 #[derive(Serialize,Deserialize,Clone)]
 pub struct BuildSettings {
     pub pen_size: i32,
-    pub build_mode: bool
+    pub place_fruit_spawner: bool,
+    pub place_plant_spawner: bool,
+    pub place_rock: bool,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct PlantSettings {
@@ -42,6 +44,7 @@ pub struct AnimalSettings{
     pub brain_mutation_strength: f32,
     pub physical_mutation_rate: f32,
     pub physical_mutation_strength: f32,
+    pub speciation_threshold: f32,
     pub carnivory_efficiency: f32,
     pub herbivory_efficiency: f32,
     pub speed_energy_cost: f32,
@@ -73,14 +76,14 @@ impl Default for SimParams{
             plants: PlantSettings {
                 global_spawn_rate: 5,
                 spawn_rate: 6,
-                spawn_radius: 0.0,
+                spawn_radius: 15.,
                 energy: 80.0,
                 protein: 0.02,
             },
             fruit: FruitSettings {
                 global_spawn_rate: 1,
                 spawn_rate: 2,
-                spawn_radius: 0.0,
+                spawn_radius: 10.0,
                 energy: 300.0,
                 protein: 0.1,
             },
@@ -89,6 +92,7 @@ impl Default for SimParams{
                 brain_mutation_strength: 10.,
                 physical_mutation_rate: 15.0,
                 physical_mutation_strength: 10.0,
+                speciation_threshold: 0.1,
                 carnivory_efficiency: 1.0,
                 herbivory_efficiency: 1.0,
                 speed_energy_cost: 1.0,
@@ -108,7 +112,9 @@ impl Default for SimParams{
             },
             build: BuildSettings {
                 pen_size: 0,
-                build_mode: false
+                place_fruit_spawner: false,
+                place_plant_spawner: false,
+                place_rock: false,
             },
             simulation: SimulationSettings {
                 steps_per_frame: 1

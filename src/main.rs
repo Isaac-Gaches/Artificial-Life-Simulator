@@ -25,6 +25,7 @@ use crate::environment::fruit::FruitSpawners;
 use crate::environment::plants::PlantSpawners;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
+use crate::utilities::highlighter::Highlighter;
 use crate::utilities::input_manager::Inputs;
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::state::State;
@@ -53,7 +54,7 @@ pub async fn run() {
     let mut inputs = Inputs::default();
     let mut frames = 0;
     let mut system = System::default();
-    let mut state = State{ menu: true, load_save: false, new: false };
+    let mut state = State{ menu: true, load_save: false, new: false, save: false };
     let mut camera = Camera{
         position: [sim_params.world.width/2.0,sim_params.world.height/2.0],
         zoom: 0.05,
@@ -68,6 +69,7 @@ pub async fn run() {
     plant_spawners.random(&sim_params);
     let mut fruit_spawners = FruitSpawners{ bodies: vec![] };
     fruit_spawners.random(&sim_params);
+    let mut highlighter = Highlighter::default();
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -85,16 +87,6 @@ pub async fn run() {
                             Key::Character("d") => { inputs.right = true; follow = false;},
                             Key::Character("=") => inputs.plus = true,
                             Key::Character("-") => inputs.minus = true,
-                            Key::Character("q") => {
-                                animals.kill();
-                                plants.kill();
-                                fruit.kill();
-                                save_syatem.save(step, animals.clone(), plants.clone(), fruit.clone(), eggs.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone());
-
-                                collisions.update_animal_grid(animals.instances().as_slice());
-                                collisions.update_plant_grid(plants.instances());
-                                collisions.update_fruit_grid(fruit.instances());
-                            },
                             _ => (),
                         }
                     }
@@ -129,7 +121,7 @@ pub async fn run() {
                 }
                 WindowEvent::RedrawRequested => {
                     if state.menu{
-                        match renderer.main_menu(&mut state,&mut sim_params,&save_syatem) {
+                        match renderer.main_menu(&mut state,&mut sim_params,&mut save_syatem) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);
@@ -139,7 +131,7 @@ pub async fn run() {
                         }
                     }
                     else if state.load_save {
-                        (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks) = save_syatem.load(sim_params.save_id).open();
+                        (step, animals, plants, fruit, eggs, species_list, stats, sim_params, rocks,fruit_spawners,plant_spawners) = save_syatem.load(sim_params.save_id).open();
                         collisions = environment::collisions::Collisions::new(&sim_params);
                         collisions.update_animal_grid(animals.instances().as_slice());
                         collisions.update_plant_grid(plants.instances());
@@ -180,6 +172,17 @@ pub async fn run() {
 
                         state.new = false;
                     }
+                    else if state.save{
+                        animals.kill();
+                        plants.kill();
+                        fruit.kill();
+                        save_syatem.save(step, animals.clone(), plants.clone(), fruit.clone(), eggs.clone(), species_list.clone(),stats.clone(),sim_params.clone(),rocks.clone(),fruit_spawners.clone(),plant_spawners.clone());
+                        collisions.update_animal_grid(animals.instances().as_slice());
+                        collisions.update_plant_grid(plants.instances());
+                        collisions.update_fruit_grid(fruit.instances());
+                        state.save = false;
+                        highlighter.set_highlights(&animals);
+                    }
                     else {
                         inspected_animal = if let Some(animal) = animals.animals.iter().find(|animal|{
                             animal.id == inspected_animal_id
@@ -194,83 +197,104 @@ pub async fn run() {
                             frames = 0;
                             diagnostic_timer = SystemTime::now();
                         }
-                        if !sim_params.build.build_mode {
-                            for _ in 0..sim_params.simulation.steps_per_frame {
-                                if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.simulation.steps_per_frame as u128 {
-                                    stats.update_graphs(animals.count(), plants.count(), &animals.animals);
-                                    graph_timer = SystemTime::now();
-                                }
 
-                                if step % 3600 == 0 {
-                                    for _ in 0..sim_params.plants.spawn_rate{
-                                        plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
-                                    }
-                                    for _ in 0..sim_params.fruit.spawn_rate{
-                                        fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
-                                    }
-
-                                    for _ in 0..sim_params.plants.global_spawn_rate{
-                                        plants.spawn_random(&rocks, &collisions, &sim_params);
-                                    }
-                                    for _ in 0..sim_params.fruit.global_spawn_rate{
-                                        fruit.spawn_random(&rocks, &collisions, &sim_params);
-                                    }
-
-                                    if animals.count() < 20{
-                                        animals.spawn(&sim_params);
-                                        animals.spawn(&sim_params);
-                                        animals.spawn(&sim_params);
-                                        animals.spawn(&sim_params);
-                                        animals.spawn(&sim_params);
-                                        animals.spawn(&sim_params);
-                                    }
-                                }
-
-                                if step % 6 == 0 {
-                                    animals.kill();
-                                    plants.kill();
-                                    fruit.kill();
-                                    collisions.update_animal_grid(animals.instances().as_slice());
-                                    collisions.update_plant_grid(plants.instances());
-                                    collisions.update_fruit_grid(fruit.instances());
-                                }
-
-                                collisions.handle_collisions(&mut animals, &mut plants, &mut fruit, &sim_params);
-                                eggs.update(&mut animals);
-                                animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
-
-                                step += 1;
+                        for _ in 0..sim_params.simulation.steps_per_frame {
+                            if step % 2160000 == 0 && step > 0{
+                                state.save = true;
                             }
-                        }
-                        else if !renderer.egui_context().is_pointer_over_area() {
-                            if inputs.left_mouse {
-                                rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size);
-                                plants.remove_plants_in_walls(&rocks);
-                                fruit.remove_plants_in_walls(&rocks);
+
+                            if graph_timer.elapsed().unwrap().as_millis() >= 1000 / sim_params.simulation.steps_per_frame as u128 {
+                                stats.update_graphs(animals.count(),fruit.count(), plants.count(), &animals.animals);
+                                graph_timer = SystemTime::now();
+                            }
+
+                            if step % 3600 == 0 {
+                                for _ in 0..sim_params.plants.spawn_rate{
+                                    plant_spawners.spawn(&mut plants,&rocks,&collisions,&sim_params);
+                                }
+                                for _ in 0..sim_params.fruit.spawn_rate{
+                                    fruit_spawners.spawn(&mut fruit,&rocks,&collisions,&sim_params);
+                                }
+
+                                for _ in 0..sim_params.plants.global_spawn_rate{
+                                    plants.spawn_random(&rocks, &collisions, &sim_params);
+                                }
+                                for _ in 0..sim_params.fruit.global_spawn_rate{
+                                    fruit.spawn_random(&rocks, &collisions, &sim_params);
+                                }
+
+                                if animals.count() < 20{
+                                    animals.spawn(&sim_params);
+                                    animals.spawn(&sim_params);
+                                    animals.spawn(&sim_params);
+                                    animals.spawn(&sim_params);
+                                    animals.spawn(&sim_params);
+                                    animals.spawn(&sim_params);
+                                }
+                            }
+
+                            if step % 6 == 0 {
+                                animals.kill();
+                                plants.kill();
+                                fruit.kill();
+                                collisions.update_animal_grid(animals.instances().as_slice());
                                 collisions.update_plant_grid(plants.instances());
                                 collisions.update_fruit_grid(fruit.instances());
-                            } else if inputs.right_mouse {
-                                rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size);
+                                highlighter.set_highlights(&animals);
                             }
-                        }
 
-                        if !renderer.egui_context().is_pointer_over_area() {
-                            if inputs.left_mouse {
-                                let pos = camera.screen_to_world_pos(inputs.mouse_pos);
-                                if pos[0] >0. && pos[0] < sim_params.world.width && pos[1] >0. && pos[1] < sim_params.world.height {
-                                    if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last() {
-                                        let animal = animals.animals.index(*i);
-                                        inspected_animal_id = animal.id;
-                                        follow = true;
+                            highlighter.move_highlights(&animals);
+
+                            collisions.handle_collisions(&mut animals, &mut plants, &mut fruit, &sim_params);
+                            eggs.update(&mut animals);
+                            animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
+
+                            step += 1;
+                        }
+                        if !renderer.egui_context().is_pointer_over_area(){
+                            if !(sim_params.build.place_fruit_spawner || sim_params.build.place_rock || sim_params.build.place_plant_spawner){
+                                if inputs.left_mouse {
+                                    let pos = camera.screen_to_world_pos(inputs.mouse_pos);
+                                    if pos[0] > 0. && pos[0] < sim_params.world.width && pos[1] >0. && pos[1] < sim_params.world.height {
+                                        if let Some(i) = collisions.animals_grid[(pos[0] * DIV) as usize * collisions.cells_height + (pos[1] * DIV) as usize].object_ids.last() {
+                                            let animal = animals.animals.index(*i);
+                                            inspected_animal_id = animal.id;
+                                            follow = true;
+                                        }
                                     }
+                                }
+                            }
+                            else{
+                                if inputs.left_mouse {
+                                    if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
+                                    if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                    if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
+
+                                    plants.remove_plants_in_walls(&rocks);
+                                    fruit.remove_plants_in_walls(&rocks);
+                                    collisions.update_plant_grid(plants.instances());
+                                    collisions.update_fruit_grid(fruit.instances());
+                                } else if inputs.right_mouse {
+                                    if sim_params.build.place_rock { rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
+                                    if sim_params.build.place_fruit_spawner { fruit_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                    if sim_params.build.place_plant_spawner { plant_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
                                 }
                             }
                         }
 
                         camera.update(&inputs,&renderer.size(),follow,&inspected_animal);
-                        renderer.update(&animals,&plants,&fruit,&eggs,&rocks,camera);
 
-                        match renderer.render(&mut stats,&mut sim_params,&inspected_animal,&mut state) {
+                        let circle_count = (eggs.count() + plants.count() + fruit.count() + highlighter.count()) as u32;
+                        let square_count = rocks.count() + (plant_spawners.count() + fruit_spawners.count()) as u32;
+                        let triangle_count = animals.count() as u32;
+
+                        let circles = [highlighter.instances().as_slice(),fruit.instances().as_slice(),eggs.instances().as_slice(),plants.instances().as_slice()].concat();
+                        let squares = [rocks.instances().as_slice(),fruit_spawners.instances().as_slice(),plant_spawners.instances().as_slice()].concat();
+                        let triangles = animals.instances();
+
+                        renderer.update(circle_count,square_count,triangle_count,circles,squares,triangles,camera);
+
+                        match renderer.render(&mut stats,&mut sim_params,&inspected_animal,&mut state,&mut highlighter) {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 renderer.resize(None);

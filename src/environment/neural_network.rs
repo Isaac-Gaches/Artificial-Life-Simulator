@@ -42,7 +42,7 @@ impl Network{
         }
     }
     pub fn compare(&self, other: &Network) -> f32{
-        self.layers.iter().zip(other.layers.iter()).map(|layer| { layer.0.compare(layer.1) } ).sum::<f32>()
+        self.layers.iter().zip(other.layers.iter()).map(|layer| { layer.0.compare(layer.1) } ).sum::<f32>()/self.layers.len() as f32
     }
     pub fn zero(layers: &[usize])->Self{
         let mut layers = layers.to_vec();
@@ -70,7 +70,7 @@ impl Layer{
         self.neurons.iter_mut().for_each(|neuron| neuron.mutate(strength,probability));
     }
     fn compare(&self, other: &Layer) -> f32{
-        self.neurons.iter().zip(other.neurons.iter()).map(|neuron|{ neuron.0.compare(neuron.1) }).sum::<f32>()
+        self.neurons.iter().zip(other.neurons.iter()).map(|neuron|{ neuron.0.compare(neuron.1) }).sum::<f32>()/self.neurons.len() as f32
     }
 }
 impl Neuron{
@@ -103,6 +103,8 @@ impl Neuron{
         }
     }
     fn compare(&self, other: &Neuron) -> f32{
-        self.weights.iter().zip(other.weights.iter()).map(|weight| { (weight.0 - weight.1).abs() }).sum::<f32>() + (self.bias -other.bias).abs()
+        let weights_diff = if self.weights.len() > 0{self.weights.iter().zip(other.weights.iter()).map(|weight| { (weight.0 - weight.1).abs() }).sum::<f32>()/self.weights.len() as f32}else{0.};
+        let bias_diff = (self.bias-other.bias).abs();
+        weights_diff+bias_diff/2.0
     }
 }

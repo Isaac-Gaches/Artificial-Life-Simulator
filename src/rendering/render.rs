@@ -9,14 +9,15 @@ use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::{Animal, Animals};
 use crate::environment::eggs::Eggs;
-use crate::environment::fruit::Fruits;
+use crate::environment::fruit::{Fruits, FruitSpawners};
 use crate::rendering::gui::{EguiRenderer, gui, main_menu_gui};
-use crate::environment::plants::Plants;
+use crate::environment::plants::{Plants, PlantSpawners};
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
 use crate::environment::rocks::RockMap;
 use crate::rendering::camera::Camera;
 use crate::rendering::instance::Instance;
+use crate::utilities::highlighter::Highlighter;
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::state::State;
 
@@ -73,16 +74,12 @@ struct Buffers{
     triangle_vertex_buffer: Buffer,
     quad_vertex_buffer: Buffer,
     quad_index_buffer: Buffer,
-    animal_buffer: Buffer,
-    animal_count: u32,
-    plant_buffer: Buffer,
-    plant_count: u32,
-    fruit_buffer: Buffer,
-    fruit_count: u32,
-    egg_buffer: Buffer,
-    egg_count: u32,
-    rock_buffer: Buffer,
-    rock_count: u32,
+    triangles: Buffer,
+    triangle_count: u32,
+    squares: Buffer,
+    square_count: u32,
+    circles: Buffer,
+    circle_count: u32,
 }
 
 impl Renderer {
@@ -356,37 +353,21 @@ impl Renderer {
             &window,
         );
 
-        let animal_buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some("Buffer to render animals"),
+        let circles = device.create_buffer(&wgpu::BufferDescriptor{
+            label: None,
+            size: 8388608,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let squares = device.create_buffer(&wgpu::BufferDescriptor{
+            label: None,
+            size: 8388608,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let triangles = device.create_buffer(&wgpu::BufferDescriptor{
+            label: None,
             size: 262144,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let plant_buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some("Buffer to render plants"),
-            size: 8388608,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let fruit_buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some("Buffer to render fruit"),
-            size: 8388608,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let egg_buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some("Buffer to render eggs"),
-            size: 262144,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let rock_buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some("Buffer to render rocks"),
-            size: 8388608,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -396,16 +377,12 @@ impl Renderer {
             triangle_vertex_buffer,
             quad_vertex_buffer,
             quad_index_buffer,
-            animal_buffer,
-            animal_count: 0,
-            plant_buffer,
-            plant_count: 0,
-            fruit_buffer,
-            fruit_count: 0,
-            egg_buffer,
-            egg_count: 0,
-            rock_buffer,
-            rock_count: 0,
+            triangles,
+            triangle_count: 0,
+            squares,
+            square_count: 0,
+            circles,
+            circle_count: 0,
         };
 
         Self{
@@ -423,7 +400,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams,animal: &Option<Animal>,state: &mut State) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, stats: &mut Stats,sim_params: &mut SimParams,animal: &Option<Animal>,state: &mut State,highlighter: &mut Highlighter) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&TextureViewDescriptor {
             label: None,
@@ -461,32 +438,25 @@ impl Renderer {
             timestamp_writes: None,
         });
 
-        //animals
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
-        render_pass.set_vertex_buffer(0, self.buffers.triangle_vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.buffers.animal_buffer.slice(..));
-        render_pass.draw(0..3,0..self.buffers.animal_count);
-
-        //rocks
-        render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.buffers.rock_buffer.slice(..));
-        render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.rock_count);
-
-        //plants
+        //circle
         render_pass.set_pipeline(&self.render_pipeline_circles);
-        render_pass.set_vertex_buffer(1, self.buffers.plant_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.plant_count);
+        render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
+        render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.buffers.circles.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.circle_count);
 
-        //fruit
-        render_pass.set_vertex_buffer(1, self.buffers.fruit_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.fruit_count);
+        //triangle
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.buffers.triangle_vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.buffers.triangles.slice(..));
+        render_pass.draw(0..3,0..self.buffers.triangle_count);
 
-        //eggs
-        render_pass.set_vertex_buffer(1, self.buffers.egg_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.egg_count);
-
+        //square
+        render_pass.set_vertex_buffer(1, self.buffers.squares.slice(..));
+        render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.square_count);
 
         drop(render_pass);
 
@@ -506,7 +476,8 @@ impl Renderer {
             stats,
             sim_params,
             animal,
-            state
+            state,
+            highlighter
         );
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -515,7 +486,7 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn main_menu(&mut self, state: &mut State,sim_params: &mut SimParams,save_system: &SaveSystem) -> Result<(), wgpu::SurfaceError> {
+    pub fn main_menu(&mut self, state: &mut State,sim_params: &mut SimParams,save_system: &mut SaveSystem) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
 
         let view = output.texture.create_view(&TextureViewDescriptor {
@@ -550,6 +521,7 @@ impl Renderer {
             state,
             sim_params,
             save_system,
+            &self.size
         );
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -576,19 +548,16 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,animals: &Animals,plants: &Plants,fruit: &Fruits,eggs: &Eggs,rocks: &RockMap,camera: Camera){
-        self.buffers.animal_count = animals.count() as u32;
-        self.buffers.plant_count = plants.count() as u32;
-        self.buffers.fruit_count = fruit.count() as u32;
-        self.buffers.egg_count = eggs.count() as u32;
-        self.buffers.rock_count = rocks.count();
+    pub fn update(&mut self,circle_count: u32,square_count: u32, triangle_count: u32,circles: Vec<Instance>,squares: Vec<Instance>,triangles: Vec<Instance>/*, animals: &Animals,plants: &Plants,fruit: &Fruits,eggs: &Eggs,rocks: &RockMap*/,camera: Camera/*, fruit_spawners: &FruitSpawners,plant_spawners: &PlantSpawners*/){
+        self.buffers.circle_count = circle_count;
+        self.buffers.square_count = square_count;
+        self.buffers.triangle_count = triangle_count;
+
+        self.queue.write_buffer(&self.buffers.circles, 0, bytemuck::cast_slice(circles.as_slice()));
+        self.queue.write_buffer(&self.buffers.squares, 0, bytemuck::cast_slice(squares.as_slice()));
+        self.queue.write_buffer(&self.buffers.triangles, 0, bytemuck::cast_slice(triangles.as_slice()));
 
         self.queue.write_buffer(&self.buffers.camera_buffer,0,bytemuck::cast_slice(&[camera]));
-        self.queue.write_buffer(&self.buffers.animal_buffer, 0, bytemuck::cast_slice(animals.instances().as_slice()));
-        self.queue.write_buffer(&self.buffers.plant_buffer,0,bytemuck::cast_slice(plants.instances().as_slice()));
-        self.queue.write_buffer(&self.buffers.fruit_buffer,0,bytemuck::cast_slice(fruit.instances().as_slice()));
-        self.queue.write_buffer(&self.buffers.egg_buffer,0,bytemuck::cast_slice(eggs.instances().as_slice()));
-        self.queue.write_buffer(&self.buffers.rock_buffer,0,bytemuck::cast_slice(rocks.instances().as_slice()));
     }
 
     pub fn window(&self) -> &Window {

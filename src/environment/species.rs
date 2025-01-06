@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animal;
+use crate::utilities::simulation_parameters::SimParams;
 
 #[derive(Serialize,Deserialize,Clone)]
 struct Species{
@@ -17,20 +18,19 @@ pub struct SpeciesList{
     species: Vec<Species>,
 }
 impl SpeciesList{
-    pub fn speciate(&mut self, animal: &Animal,parent_species: usize) -> usize{
-        match self.species.iter().enumerate().find(|(i,species)|{ species.compare(animal) < 30. }){
-            Some((i,_)) => {
-                i
-            }
-            None => {
-                let new_species = Species{
-                    parent: parent_species,
-                    specimen: animal.clone(),
-                    count: 1,
-                };
-                self.species.push(new_species);
-                self.species.len()
-            }
+    pub fn speciate(&mut self, child: &Animal,parent_id: usize,sim_params: &SimParams) -> usize{
+        if parent_id == 0 || self.species[parent_id -1].specimen.brain.network.compare(&child.brain.network) > sim_params.animals.speciation_threshold{
+            let new_species = Species{
+                parent: parent_id,
+                specimen: child.clone(),
+                count: 1,
+            };
+            self.species.push(new_species);
+            self.species.len()
+        }
+        else{
+            self.species[parent_id -1].count += 1;
+            parent_id
         }
     }
     pub fn count(&self)->usize{

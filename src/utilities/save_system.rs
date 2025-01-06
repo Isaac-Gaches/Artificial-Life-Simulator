@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
 use crate::environment::collisions::Collisions;
 use crate::environment::eggs::Eggs;
-use crate::environment::fruit::Fruits;
-use crate::environment::plants::Plants;
+use crate::environment::fruit::{Fruits, FruitSpawners};
+use crate::environment::plants::{Plants, PlantSpawners};
 use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
@@ -36,7 +36,7 @@ impl SaveSystem{
         serde_json::from_str(&data).unwrap()
     }
 
-    pub fn save(&mut self,step: i32, animals: Animals,plants: Plants, fruits: Fruits,eggs: Eggs,species_list: SpeciesList,stats: Stats,sim_params: SimParams,rock_map: RockMap){
+    pub fn save(&mut self,step: i32, animals: Animals,plants: Plants, fruits: Fruits,eggs: Eggs,species_list: SpeciesList,stats: Stats,sim_params: SimParams,rock_map: RockMap, fruit_spawners: FruitSpawners,plant_spawners: PlantSpawners){
         let save = SimulationSave{
             step,
             animals,
@@ -47,6 +47,8 @@ impl SaveSystem{
             stats,
             sim_params,
             rock_map,
+            fruit_spawners,
+            plant_spawners,
         };
 
         let serialized = serde_json::to_string(&save).unwrap();
@@ -58,6 +60,11 @@ impl SaveSystem{
 
         self.save_number+=1;
         self.saves.push(path);
+    }
+
+    pub fn delete(&mut self, i:usize){
+        fs::remove_file(["saves/",self.saves.index(i)].join("")).unwrap();
+        self.saves.remove(i);
     }
 }
 #[derive(Serialize, Deserialize)]
@@ -71,10 +78,12 @@ pub struct SimulationSave{
     stats: Stats,
     sim_params: SimParams,
     rock_map: RockMap,
+    fruit_spawners: FruitSpawners,
+    plant_spawners: PlantSpawners,
 }
 
 impl SimulationSave{
-    pub fn open(self) -> (i32,Animals,Plants,Fruits,Eggs,SpeciesList,Stats,SimParams,RockMap){
-        (self.step,self.animals,self.plants,self.fruits,self.eggs,self.species_list,self.stats,self.sim_params,self.rock_map)
+    pub fn open(self) -> (i32,Animals,Plants,Fruits,Eggs,SpeciesList,Stats,SimParams,RockMap,FruitSpawners,PlantSpawners){
+        (self.step,self.animals,self.plants,self.fruits,self.eggs,self.species_list,self.stats,self.sim_params,self.rock_map,self.fruit_spawners,self.plant_spawners)
     }
 }
