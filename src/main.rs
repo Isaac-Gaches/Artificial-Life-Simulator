@@ -184,13 +184,9 @@ pub async fn run() {
                         highlighter.set_highlights(&animals);
                     }
                     else {
-                        inspected_animal = if let Some(animal) = animals.animals.iter().find(|animal|{
+                        inspected_animal = animals.animals.iter().find(|animal|{
                             animal.id == inspected_animal_id
-                        }){
-                            Some(animal.clone())
-                        } else{
-                            None
-                        };
+                        }).cloned();
 
                         if diagnostic_timer.elapsed().unwrap().as_millis() >= 1000{
                             stats.update_diagnostics(frames,&mut system);
@@ -264,21 +260,19 @@ pub async fn run() {
                                     }
                                 }
                             }
-                            else{
-                                if inputs.left_mouse {
-                                    if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
-                                    if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
-                                    if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                            else if inputs.left_mouse {
+                                if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
+                                if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
 
-                                    plants.remove_plants_in_walls(&rocks);
-                                    fruit.remove_plants_in_walls(&rocks);
-                                    collisions.update_plant_grid(plants.instances());
-                                    collisions.update_fruit_grid(fruit.instances());
-                                } else if inputs.right_mouse {
-                                    if sim_params.build.place_rock { rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
-                                    if sim_params.build.place_fruit_spawner { fruit_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
-                                    if sim_params.build.place_plant_spawner { plant_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
-                                }
+                                plants.remove_plants_in_walls(&rocks);
+                                fruit.remove_plants_in_walls(&rocks);
+                                collisions.update_plant_grid(plants.instances());
+                                collisions.update_fruit_grid(fruit.instances());
+                            } else if inputs.right_mouse {
+                                if sim_params.build.place_rock { rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
+                                if sim_params.build.place_fruit_spawner { fruit_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                if sim_params.build.place_plant_spawner { plant_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
                             }
                         }
 

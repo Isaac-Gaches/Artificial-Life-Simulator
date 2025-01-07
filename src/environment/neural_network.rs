@@ -103,7 +103,7 @@ impl Neuron{
         }
     }
     fn compare(&self, other: &Neuron) -> f32{
-        let weights_diff = if self.weights.len() > 0{self.weights.iter().zip(other.weights.iter()).map(|weight| { (weight.0 - weight.1).abs() }).sum::<f32>()/self.weights.len() as f32}else{0.};
+        let weights_diff = if !self.weights.is_empty(){self.weights.iter().zip(other.weights.iter()).map(|weight| { (weight.0 - weight.1).abs() }).sum::<f32>()/self.weights.len() as f32}else{0.};
         let bias_diff = (self.bias-other.bias).abs();
         weights_diff+bias_diff/2.0
     }

@@ -54,7 +54,7 @@ impl RockMap{
                 Some(Instance::new([x+CELL_SIZE*0.5 , y+CELL_SIZE*0.5], [0.3, 0.3, 0.3], 0.0, CELL_SIZE))
             }
             else {
-                return None
+                None
             }
         }).collect()
     }

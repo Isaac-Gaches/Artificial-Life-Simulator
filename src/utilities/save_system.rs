@@ -3,7 +3,6 @@ use std::fs::File;
 use std::ops::Index;
 use serde::{Deserialize, Serialize};
 use crate::environment::animal::Animals;
-use crate::environment::collisions::Collisions;
 use crate::environment::eggs::Eggs;
 use crate::environment::fruit::{Fruits, FruitSpawners};
 use crate::environment::plants::{Plants, PlantSpawners};

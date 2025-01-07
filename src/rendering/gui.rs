@@ -1,4 +1,4 @@
-use egui::{Align, Align2, Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
+use egui::{Align2, Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
 use egui::epaint::Shadow;
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -710,6 +710,15 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 ui.horizontal(|ui|{
                     ui.label("Show");
+                    ui.add(egui::Checkbox::new(&mut highlighter.species_id_on,""));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Species");
+                    ui.add(egui::DragValue::new(&mut highlighter.species_id));
+                });
+
+                ui.horizontal(|ui|{
+                    ui.label("Show");
                     ui.add(egui::Checkbox::new(&mut highlighter.speed.on,""));
                 });
                 ui.horizontal(|ui|{
@@ -756,7 +765,7 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
                     }
                 });
             }
-            if save_system.saves.len() == 0{
+            if save_system.saves.is_empty(){
                 ui.label(RichText::new("No Saves").heading());
             }
         });

@@ -101,12 +101,10 @@ impl Plants {
                 }
             }
 
-            if spawn {
-                if collisions.plants_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2{
-                    self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
-                    self.plants.push(Plant { eaten: false });
-                    break;
-                }
+            if spawn && collisions.plants_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2 {
+                self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
+                self.plants.push(Plant { eaten: false });
+                break;
             }
         }
     }
@@ -129,12 +127,10 @@ impl Plants {
                         }
                     }
                 }
-                if spawn {
-                    if collisions.plants_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2{
-                        self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
-                        self.plants.push(Plant { eaten: false });
-                        break;
-                    }
+                if spawn && collisions.plants_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2 {
+                    self.bodies.push(Instance::new([x, y], [0.0, 0.7, 0.0], 0.0, 0.06));
+                    self.plants.push(Plant { eaten: false });
+                    break;
                 }
             }
         }

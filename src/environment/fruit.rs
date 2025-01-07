@@ -3,7 +3,6 @@ use std::ops::{Index, IndexMut};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::environment::collisions::{CELL_SIZE, Collisions, DIV};
-use crate::environment::plants::Plant;
 use crate::environment::rocks::RockMap;
 use crate::rendering::instance::Instance;
 use crate::utilities::simulation_parameters::SimParams;
@@ -101,12 +100,10 @@ impl Fruits {
                 }
             }
 
-            if spawn {
-                if collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2{
-                    self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
-                    self.fruit.push(Fruit { eaten: false });
-                    break;
-                }
+            if spawn && collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 2 {
+                self.bodies.push(Instance::new([x, y], [0.3, 1.0, 0.0], 0.0, 0.1));
+                self.fruit.push(Fruit { eaten: false });
+                break;
             }
         }
     }
@@ -132,12 +129,10 @@ impl Fruits {
                         }
                     }
                 }
-                if spawn {
-                    if collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 1{
-                        self.bodies.push(Instance::new([x, y], [0.3, 1., 0.0], 0.0, 0.1));
-                        self.fruit.push(Fruit { eaten: false });
-                        break;
-                    }
+                if spawn && collisions.fruit_grid[(x * DIV) as usize * collisions.cells_height + (y * DIV) as usize].count() < 1 {
+                    self.bodies.push(Instance::new([x, y], [0.3, 1., 0.0], 0.0, 0.1));
+                    self.fruit.push(Fruit { eaten: false });
+                    break;
                 }
             }
         }
