@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, Context, emath, Frame, RichText, Sense, Stroke, Vec2, Visuals};
+use egui::{Align2, Color32, Context, emath, Frame, RichText, Sense, Stroke, Ui, Vec2, Visuals};
 use egui::epaint::Shadow;
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -10,7 +10,7 @@ use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::environment::animal::Animal;
-use crate::utilities::highlighter::Highlighter;
+use crate::utilities::highlighter::{Condition, Highlighter, SelectedHighlight};
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::utilities::statistics::Stats;
@@ -27,6 +27,7 @@ pub struct Toggles{
     animal_inspect: bool,
     highlighter_settings: bool,
     populations: Populations,
+    highlight_selected: bool,
 }
 #[derive(Default)]
 pub struct Populations{
@@ -234,7 +235,10 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             ui.separator();
             ui.heading("System");
             ui.separator();
-
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Autosave").heading());
+                ui.add(egui::DragValue::new(&mut sim_params.autosave).clamp_range(60..=6000).speed(10).suffix(" min"));
+            });
             if ui.add_sized([180.,30.],egui::Button::new(RichText::new("Save").heading())).clicked(){
                 state.save = true;
             }
@@ -708,33 +712,52 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .collapsible(false)
             .default_width(0.0)
             .show(ui, |ui| {
-                ui.horizontal(|ui|{
-                    ui.label("Show");
-                    ui.add(egui::Checkbox::new(&mut highlighter.species_id_on,""));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Species");
-                    ui.add(egui::DragValue::new(&mut highlighter.species_id));
-                });
 
-                ui.horizontal(|ui|{
-                    ui.label("Show");
-                    ui.add(egui::Checkbox::new(&mut highlighter.speed.on,""));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Bounded");
-                    ui.add(egui::Checkbox::new(&mut highlighter.speed.bounded,""));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Lower bound");
-                    ui.add(egui::DragValue::new(&mut highlighter.speed.lower).clamp_range(0..=1).speed(0.01));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Upper bound");
-                    ui.add(egui::DragValue::new(&mut highlighter.speed.upper).clamp_range(0..=1).speed(0.01));
-                });
+                egui::ComboBox::from_label("Highlight")
+                    .selected_text(format!("{:?}", highlighter.selected_highlight))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::None, "None");
+                        ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::Diet, "Diet");
+                        ui.selectable_value(&mut highlighter.selected_highlight, SelectedHighlight::Size, "Size");
+                        ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::Speed, "Speed");
+                        ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::Species, "Species");
+                    }
+                    );
+
+                match highlighter.selected_highlight {
+                    SelectedHighlight::Diet =>{
+                        highlight_settings(ui,&mut highlighter.diet);
+                    },
+                    SelectedHighlight::Size =>{
+                        highlight_settings(ui,&mut highlighter.size);
+                    }
+                    SelectedHighlight::Speed =>{
+                        highlight_settings(ui,&mut highlighter.speed);
+                    },
+                    SelectedHighlight::Species =>{
+                        ui.horizontal(|ui|{
+                            ui.label("Species Id");
+                            ui.add(egui::DragValue::new(&mut highlighter.species_id));
+                        });
+                    }
+                    SelectedHighlight::None=>{},
+                }
             });
     }
+}
+fn highlight_settings(ui: &mut Ui,con: &mut Condition){
+    ui.horizontal(|ui|{
+        ui.label("Bounded");
+        ui.add(egui::Checkbox::new(&mut con.bounded,""));
+    });
+    ui.horizontal(|ui|{
+        ui.label("Lower bound");
+        ui.add(egui::DragValue::new(&mut con.lower).clamp_range(0..=1).speed(0.01));
+    });
+    ui.horizontal(|ui|{
+        ui.label("Upper bound");
+        ui.add(egui::DragValue::new(&mut con.upper).clamp_range(0..=1).speed(0.01));
+    });
 }
 
 pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &mut SaveSystem, screen_size: &PhysicalSize<u32>) {

@@ -52,7 +52,16 @@ impl SaveSystem{
 
         let serialized = serde_json::to_string(&save).unwrap();
 
-        let path = ["save_",&self.save_number.to_string()].join("");
+        let mut path = ["save_",&self.save_number.to_string()].join("");
+        loop {
+            if self.saves.contains(&path) {
+                self.save_number += 1;
+                path = ["save_",&self.save_number.to_string()].join("")
+            }
+            else {
+                break
+            }
+        }
 
         File::create(["saves/",&path].join("")).unwrap();
         fs::write(["saves/",&path].join(""), serialized).expect("Unable to write file");

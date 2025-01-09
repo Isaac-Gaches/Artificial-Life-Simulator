@@ -34,8 +34,10 @@ impl FruitSpawners {
             self.bodies.push(Instance::new([x as f32 * CELL_SIZE+CELL_SIZE*0.5,y as f32 * CELL_SIZE+CELL_SIZE*0.5],[0.3, 1.0, 0.0],PI/4.,CELL_SIZE*1.1));
         }
     }
-    pub fn place(&mut self,pos: [f32;2]){
-        self.bodies.push(Instance::new([(pos[0]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5,(pos[1]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5],[0.3, 1.0, 0.0],PI/4.,CELL_SIZE*1.1));
+    pub fn place(&mut self,pos: [f32;2],sim_params: &SimParams){
+        if pos[0] > CELL_SIZE && pos[1] > CELL_SIZE && pos[0] < sim_params.world.width - CELL_SIZE && pos[1] < sim_params.world.height - CELL_SIZE {
+            self.bodies.push(Instance::new([(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5], [0.3, 1.0, 0.0], PI / 4., CELL_SIZE * 1.1));
+        }
     }
     pub fn remove(&mut self,pos: [f32;2]){
         (0..self.count()).rev().for_each(|i|{

@@ -195,7 +195,7 @@ pub async fn run() {
                         }
 
                         for _ in 0..sim_params.simulation.steps_per_frame {
-                            if step % 2160000 == 0 && step > 0{
+                            if step % (sim_params.autosave*3600) == 0 && step > 0{
                                 state.save = true;
                             }
 
@@ -262,8 +262,8 @@ pub async fn run() {
                             }
                             else if inputs.left_mouse {
                                 if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
-                                if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
-                                if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params); }
+                                if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params); }
 
                                 plants.remove_plants_in_walls(&rocks);
                                 fruit.remove_plants_in_walls(&rocks);

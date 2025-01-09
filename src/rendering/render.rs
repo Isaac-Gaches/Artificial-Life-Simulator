@@ -351,19 +351,19 @@ impl Renderer {
 
         let circles = device.create_buffer(&wgpu::BufferDescriptor{
             label: None,
-            size: 8388608,
+            size: 4194304,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let squares = device.create_buffer(&wgpu::BufferDescriptor{
             label: None,
-            size: 8388608,
+            size: 4194304,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let triangles = device.create_buffer(&wgpu::BufferDescriptor{
             label: None,
-            size: 262144,
+            size: 4194304,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
