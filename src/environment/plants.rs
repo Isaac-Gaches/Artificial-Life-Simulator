@@ -28,9 +28,10 @@ impl PlantSpawners {
         })
     }
     pub fn random(&mut self,sim_params: &SimParams){
-        for _ in 0..20{
-            let x = rand::thread_rng().gen_range(0..(sim_params.world.width*DIV) as u32);
-            let y = rand::thread_rng().gen_range(0..(sim_params.world.height*DIV) as u32);
+        if sim_params.world.plant_spawners == 0 {return;}
+        for _ in 0..sim_params.world.plant_spawners{
+            let x = rand::thread_rng().gen_range(0..(sim_params.world.width*DIV-1.) as u32);
+            let y = rand::thread_rng().gen_range(0..(sim_params.world.height*DIV-1.) as u32);
 
             self.bodies.push(Instance::new([x as f32 * CELL_SIZE+CELL_SIZE*0.5,y as f32 * CELL_SIZE+CELL_SIZE*0.5],[0.0, 0.7, 0.0],PI/4.,CELL_SIZE * 0.9));
         }

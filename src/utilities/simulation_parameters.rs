@@ -13,7 +13,7 @@ pub struct SimParams{
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct SimulationSettings {
-    pub steps_per_frame: i8,
+    pub steps_per_frame: u8,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct BuildSettings {
@@ -24,16 +24,16 @@ pub struct BuildSettings {
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct PlantSettings {
-    pub global_spawn_rate: i8,
-    pub spawn_rate: i8,
+    pub global_spawn_rate: u8,
+    pub spawn_rate: u8,
     pub spawn_radius: f32,
     pub energy: f32,
     pub protein: f32,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct FruitSettings {
-    pub global_spawn_rate: i8,
-    pub spawn_rate: i8,
+    pub global_spawn_rate: u8,
+    pub spawn_rate: u8,
     pub spawn_radius: f32,
     pub energy: f32,
     pub protein: f32,
@@ -66,8 +66,8 @@ pub struct AnimalSettings{
 pub struct WorldSettings{
     pub width: f32,
     pub height: f32,
-    pub generate_plant_spawners: bool,
-    pub generate_fruit_spawners: bool,
+    pub plant_spawners: u8,
+    pub fruit_spawners: u8,
     pub generate_terrain: bool,
 }
 impl Default for SimParams{
@@ -122,8 +122,8 @@ impl Default for SimParams{
             world: WorldSettings {
                 width: 120.0,
                 height: 120.0,
-                generate_plant_spawners: true,
-                generate_fruit_spawners: true,
+                plant_spawners: 10,
+                fruit_spawners: 10,
                 generate_terrain: true,
             },
             save_id: 0,

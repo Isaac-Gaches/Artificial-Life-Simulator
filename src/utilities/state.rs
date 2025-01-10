@@ -1,6 +1,9 @@
-pub struct State{
-    pub menu: bool,
-    pub load_save: bool,
-    pub new: bool,
-    pub save: bool,
+#[derive(PartialEq)]
+pub enum State{
+    Menu,
+    CreateSim,
+    RunSim,
+    LoadSave,
+    NewSim,
+    SaveSim,
 }

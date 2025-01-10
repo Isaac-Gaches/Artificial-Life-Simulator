@@ -8,11 +8,13 @@ use epaint::{CircleShape, Rect, Shape};
 use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
+use winit::keyboard::NamedKey::New;
 use winit::window::Window;
 use crate::environment::animal::Animal;
 use crate::utilities::highlighter::{Condition, Highlighter, SelectedHighlight};
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::SimParams;
+use crate::utilities::state::State::{CreateSim, LoadSave, Menu, NewSim, RunSim, SaveSim};
 use crate::utilities::statistics::Stats;
 
 #[derive(Default)]
@@ -240,10 +242,10 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 ui.add(egui::DragValue::new(&mut sim_params.autosave).clamp_range(60..=6000).speed(10).suffix(" min"));
             });
             if ui.add_sized([180.,30.],egui::Button::new(RichText::new("Save").heading())).clicked(){
-                state.save = true;
+                *state = SaveSim;
             }
             if ui.add_sized([180.,30.],egui::Button::new(RichText::new("Main Menu").heading())).clicked(){
-                state.menu = true;
+                *state = Menu;
             }
         });
 
@@ -761,36 +763,48 @@ fn highlight_settings(ui: &mut Ui,con: &mut Condition){
 }
 
 pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,sim_params: &mut SimParams, save_system: &mut SaveSystem, screen_size: &PhysicalSize<u32>) {
-    egui::Window::new("Main Menu").anchor(Align2::CENTER_CENTER, [0.,0.]).collapsible(false).resizable(false).fixed_pos([screen_size.width as f32/2. , screen_size.height as f32/2.]).show(ui, |ui|{
-        if ui.add_sized([240., 40.], egui::Button::new(RichText::new("New").heading())).clicked(){
-            state.menu = !state.menu;
-            state.new = true;
-        }
+    egui::Window::new("Main Menu").default_width(0.).anchor(Align2::CENTER_CENTER, [0.,0.]).collapsible(false).resizable(false).fixed_pos([screen_size.width as f32/2. , screen_size.height as f32/2.]).show(ui, |ui|{
+        match state{
+            Menu =>{
+                if ui.add_sized([288., 50.], egui::Button::new(RichText::new("New Simulation").heading())).clicked(){
+                    *state = CreateSim;
+                }
 
-        ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: ").clamp_range(0..=200));
+                ui.separator();
 
-        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Generate terrain"));
-
-        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_plant_spawners,"Generate plants"));
-
-        ui.add(egui::Checkbox::new(&mut sim_params.world.generate_fruit_spawners,"Generate fruit"));
-
-        egui::ScrollArea::vertical().max_height(200.).show(ui, |ui| {
-            for i in (0..save_system.saves.len()).rev() {
-                ui.horizontal(|ui|{
-                    if ui.add_sized([240., 40.], egui::Button::new(RichText::new(["Load",&save_system.saves[i]].join(" ")).heading())).clicked(){
-                        sim_params.save_id = i;
-                        state.menu = !state.menu;
-                        state.load_save = true;
+                egui::ScrollArea::vertical().max_height(108.).show(ui, |ui| {
+                    for i in (0..save_system.saves.len()).rev() {
+                        ui.horizontal(|ui|{
+                            if ui.add_sized([240., 50.], egui::Button::new(RichText::new(["Load",&save_system.saves[i]].join(" ")).heading())).clicked(){
+                                sim_params.save_id = i;
+                                *state = LoadSave;
+                            }
+                            if ui.add_sized([40., 50.], egui::Button::new(RichText::new("X"))).clicked(){
+                                save_system.delete(i);
+                            }
+                        });
                     }
-                    if ui.add_sized([40., 40.], egui::Button::new(RichText::new("X"))).clicked(){
-                        save_system.delete(i);
+                    if save_system.saves.is_empty(){
+                        ui.label(RichText::new("No Saves").heading());
                     }
                 });
             }
-            if save_system.saves.is_empty(){
-                ui.label(RichText::new("No Saves").heading());
+            CreateSim => {
+                if ui.add_sized([288., 50.], egui::Button::new(RichText::new("Create Simulation").heading())).clicked(){
+                    *state = NewSim;
+                }
+                if ui.add_sized([288., 40.], egui::Button::new(RichText::new("Back").heading())).clicked(){
+                    *state = Menu;
+                }
+
+                ui.separator();
+
+                ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: ").clamp_range(0..=200));
+                ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Terrain"));
+                ui.add(egui::DragValue::new(&mut sim_params.world.plant_spawners).prefix("Plant feeders: ").clamp_range(0..=200));
+                ui.add(egui::DragValue::new(&mut sim_params.world.fruit_spawners).prefix("Fruit feeders: ").clamp_range(0..=200));
             }
-        });
+            _ => {}
+        }
     });
 }
