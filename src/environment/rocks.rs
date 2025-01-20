@@ -10,15 +10,16 @@ use crate::rendering::instance::Instance;
 
 #[derive(Serialize, Deserialize,Clone)]
 pub struct RockMap{
+    pub instances: Vec<Instance>,
     pub rocks: Vec<u8>,
     width: usize,
     pub height: usize,
 }
 impl RockMap{
-    pub fn new(col: &Collisions)->Self{
-        let mut rocks = vec![0;col.cells_width*col.cells_height];
-        let width = col.cells_width;
-        let height = col.cells_height;
+    pub fn new(size: usize)->Self{
+        let mut rocks = vec![0;size*size];
+        let width = size;
+        let height = size;
 
         for i in 0..rocks.len(){
             let x = i % width;
@@ -29,6 +30,7 @@ impl RockMap{
         }
 
         Self{
+            instances: vec![],
             rocks,
             width,
             height,
@@ -45,9 +47,11 @@ impl RockMap{
                 self.rocks[i] =1 ;
             }
         }
+
+        self.update_instances();
     }
-    pub fn instances(&self)->Vec<Instance>{
-        self.rocks.par_iter().enumerate().filter_map(|(i,rock)|{
+    fn update_instances(&mut self){
+        let instances = self.rocks.par_iter().enumerate().filter_map(|(i,rock)|{
             if *rock == 1{
                 let x = (i / self.height) as f32 * CELL_SIZE;
                 let y = (i % self.height) as f32 * CELL_SIZE;
@@ -56,7 +60,11 @@ impl RockMap{
             else {
                 None
             }
-        }).collect()
+        }).collect();
+        self.instances = instances;
+    }
+    pub fn instances(&self)-> &Vec<Instance>{
+        &self.instances
     }
     pub fn count(&self) -> u32{
         let mut count = 0;
@@ -68,14 +76,15 @@ impl RockMap{
         count
     }
 
-    pub fn set(&mut self,id:u8, pos: [f32;2],splat: i32) {
-        if pos[0] > CELL_SIZE && pos[0] < (CELL_SIZE*self.width as f32)-CELL_SIZE && pos[1] > CELL_SIZE && pos[1] < (CELL_SIZE*self.height as f32)-CELL_SIZE{
+    pub fn set(&mut self,id:u8, pos: [f32;2],splat: i32) -> bool{
+        if pos[0] > CELL_SIZE && pos[0] < (CELL_SIZE*self.width as f32)-CELL_SIZE && pos[1] > CELL_SIZE && pos[1] < (CELL_SIZE*self.height as f32)-CELL_SIZE && id != self.rocks[(pos[0] * DIV) as usize * self.height + (pos[1] * DIV) as usize]{
             if splat > 0 {
                 for x in -splat..=splat {
                     for y in -splat..=splat {
                         if pos[0] + x as f32*CELL_SIZE > CELL_SIZE && pos[0] + (x as f32)*CELL_SIZE < (CELL_SIZE*self.height as f32)-CELL_SIZE && pos[1] + y as f32*CELL_SIZE > CELL_SIZE && pos[1] + (y as f32)*CELL_SIZE < (CELL_SIZE*self.height as f32)-CELL_SIZE{
                             let i = ((pos[0] * DIV) as i32 + x) as usize * self.height + ((pos[1] * DIV) as i32 + y) as usize;
                             self.rocks[i] = id;
+
                         }
                     }
                 }
@@ -83,6 +92,9 @@ impl RockMap{
                 let i = (pos[0] * DIV) as usize * self.height + (pos[1] * DIV) as usize;
                 self.rocks[i] = id;
             }
+            self.update_instances();
+            return true
         }
+        false
     }
 }

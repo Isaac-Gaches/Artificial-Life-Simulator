@@ -6,4 +6,5 @@ pub enum State{
     LoadSave,
     NewSim,
     SaveSim,
+    Exit,
 }

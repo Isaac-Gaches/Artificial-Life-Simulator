@@ -36,17 +36,21 @@ impl PlantSpawners {
             self.bodies.push(Instance::new([x as f32 * CELL_SIZE+CELL_SIZE*0.5,y as f32 * CELL_SIZE+CELL_SIZE*0.5],[0.0, 0.7, 0.0],PI/4.,CELL_SIZE * 0.9));
         }
     }
-    pub fn place(&mut self,pos: [f32;2], sim_params: &SimParams){
-        if pos[0] > CELL_SIZE && pos[1] > CELL_SIZE && pos[0] < sim_params.world.width - CELL_SIZE && pos[1] < sim_params.world.height - CELL_SIZE {
+    pub fn place(&mut self,pos: [f32;2], sim_params: &SimParams) -> bool{
+        if pos[0] > CELL_SIZE && pos[1] > CELL_SIZE && pos[0] < sim_params.world.width - CELL_SIZE && pos[1] < sim_params.world.height - CELL_SIZE && self.bodies.iter().find(|body| [(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5] == body.position).is_none(){
             self.bodies.push(Instance::new([(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5], [0.0, 0.7, 0.0], PI / 4., CELL_SIZE * 0.9));
+            return true
         }
+        false
     }
-    pub fn remove(&mut self,pos: [f32;2]){
-        (0..self.count()).rev().for_each(|i|{
+    pub fn remove(&mut self,pos: [f32;2]) -> bool{
+        for i in (0..self.count()).rev(){
             if self.bodies[i].position == [(pos[0]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5,(pos[1]*DIV-0.5).round()*CELL_SIZE+CELL_SIZE*0.5]{
                 self.bodies.remove(i);
+                return true
             }
-        });
+        }
+        false
     }
     pub fn instances(&self) -> &Vec<Instance>{
         &self.bodies

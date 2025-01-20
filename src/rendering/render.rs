@@ -351,13 +351,13 @@ impl Renderer {
 
         let circles = device.create_buffer(&wgpu::BufferDescriptor{
             label: None,
-            size: 4194304,
+            size: 16777216,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let squares = device.create_buffer(&wgpu::BufferDescriptor{
             label: None,
-            size: 4194304,
+            size: 33554432,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -421,9 +421,9 @@ impl Renderer {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.02,
-                        g: 0.1,
-                        b: 0.2,
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
                         a: 1.0,
                     }),
                     store: wgpu::StoreOp::Store,
@@ -434,11 +434,17 @@ impl Renderer {
             timestamp_writes: None,
         });
 
-        //circle
-        render_pass.set_pipeline(&self.render_pipeline_circles);
         render_pass.set_bind_group(0,&self.camera_bind_group,&[]);
+
+        //square
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_vertex_buffer(1, self.buffers.squares.slice(..));
         render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
+        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.square_count);
+
+        //circle
+        render_pass.set_pipeline(&self.render_pipeline_circles);
         render_pass.set_vertex_buffer(1, self.buffers.circles.slice(..));
         render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.circle_count);
 
@@ -448,11 +454,7 @@ impl Renderer {
         render_pass.set_vertex_buffer(1, self.buffers.triangles.slice(..));
         render_pass.draw(0..3,0..self.buffers.triangle_count);
 
-        //square
-        render_pass.set_vertex_buffer(1, self.buffers.squares.slice(..));
-        render_pass.set_index_buffer(self.buffers.quad_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.set_vertex_buffer(0, self.buffers.quad_vertex_buffer.slice(..));
-        render_pass.draw_indexed(0..NUM_INDICES, 0, 0..self.buffers.square_count);
+
 
         drop(render_pass);
 

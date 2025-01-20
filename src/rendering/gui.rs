@@ -14,7 +14,7 @@ use crate::environment::animal::Animal;
 use crate::utilities::highlighter::{Condition, Highlighter, SelectedHighlight};
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::SimParams;
-use crate::utilities::state::State::{CreateSim, LoadSave, Menu, NewSim, RunSim, SaveSim};
+use crate::utilities::state::State::{CreateSim, Exit, LoadSave, Menu, NewSim, RunSim, SaveSim};
 use crate::utilities::statistics::Stats;
 
 #[derive(Default)]
@@ -233,6 +233,8 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             if ui.selectable_label(toggles.simulation_settings, RichText::new("Simulation Settings").heading()).clicked(){
                 toggles.simulation_settings = !toggles.simulation_settings;
             }
+
+            ui.add(egui::DragValue::new(&mut sim_params.temp.smooth).clamp_range(0..=80));
 
             ui.separator();
             ui.heading("System");
@@ -788,6 +790,12 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
                         ui.label(RichText::new("No Saves").heading());
                     }
                 });
+
+                ui.separator();
+
+                if ui.add_sized([288., 50.], egui::Button::new(RichText::new("Exit").heading())).clicked(){
+                    *state = Exit;
+                }
             }
             CreateSim => {
                 if ui.add_sized([288., 50.], egui::Button::new(RichText::new("Create Simulation").heading())).clicked(){
@@ -799,7 +807,7 @@ pub fn main_menu_gui(ui: &Context, state: &mut crate::utilities::state::State,si
 
                 ui.separator();
 
-                ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: ").clamp_range(0..=200));
+                ui.add(egui::DragValue::new(&mut sim_params.world.width).prefix("World size: ").clamp_range(10..=200));
                 ui.add(egui::Checkbox::new(&mut sim_params.world.generate_terrain,"Terrain"));
                 ui.add(egui::DragValue::new(&mut sim_params.world.plant_spawners).prefix("Plant feeders: ").clamp_range(0..=200));
                 ui.add(egui::DragValue::new(&mut sim_params.world.fruit_spawners).prefix("Fruit feeders: ").clamp_range(0..=200));

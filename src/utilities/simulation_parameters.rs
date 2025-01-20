@@ -8,6 +8,7 @@ pub struct SimParams{
     pub build: BuildSettings,
     pub simulation: SimulationSettings,
     pub world: WorldSettings,
+    pub temp: TemperatureSettings,
     pub save_id: usize,
     pub autosave: i32,
 }
@@ -37,6 +38,14 @@ pub struct FruitSettings {
     pub spawn_radius: f32,
     pub energy: f32,
     pub protein: f32,
+}
+#[derive(Serialize,Deserialize,Clone)]
+pub struct TemperatureSettings {
+    pub spread: f32,
+    pub smooth: u8,
+    pub min: f32,
+    pub plant_spawner_temp: f32,
+    pub fruit_spawner_temp: f32,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct AnimalSettings{
@@ -125,6 +134,13 @@ impl Default for SimParams{
                 plant_spawners: 10,
                 fruit_spawners: 10,
                 generate_terrain: true,
+            },
+            temp: TemperatureSettings {
+                spread: 0.95,
+                smooth: 10,
+                min: 0.0,
+                plant_spawner_temp: 15.0,
+                fruit_spawner_temp: 45.0,
             },
             save_id: 0,
             autosave: 300,

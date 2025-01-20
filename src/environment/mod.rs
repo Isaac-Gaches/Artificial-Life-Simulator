@@ -7,3 +7,4 @@ pub mod species;
 pub mod rocks;
 pub mod fruit;
 mod vision;
+pub mod temperature;

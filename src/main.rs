@@ -24,6 +24,7 @@ use crate::environment::collisions::{DIV};
 use crate::environment::fruit::FruitSpawners;
 use crate::environment::plants::PlantSpawners;
 use crate::environment::rocks::RockMap;
+use crate::environment::temperature::TemperatureMap;
 use crate::rendering::camera::Camera;
 use crate::utilities::highlighter::Highlighter;
 use crate::utilities::input_manager::Inputs;
@@ -64,12 +65,13 @@ pub async fn run() {
     let mut inspected_animal_id = 0;
     let mut inspected_animal = None;
     let mut follow = false;
-    let mut rocks = RockMap::new(&collisions);
+    let mut rocks = RockMap::new(collisions.cells_height);
     let mut plant_spawners = PlantSpawners{ bodies: vec![] };
     plant_spawners.random(&sim_params);
     let mut fruit_spawners = FruitSpawners{ bodies: vec![] };
     fruit_spawners.random(&sim_params);
     let mut highlighter = Highlighter::default();
+    let mut temp_map = TemperatureMap::new(collisions.cells_height);
 
     let _ = event_loop.run(move |event, ewlt| match event {
         Event::WindowEvent {
@@ -121,6 +123,9 @@ pub async fn run() {
                 }
                 WindowEvent::RedrawRequested => {
                     match state {
+                        State::Exit =>{
+                            ewlt.exit()
+                        }
                         State::Menu | State::CreateSim => {
                             match renderer.main_menu(&mut state,&mut sim_params,&mut save_syatem) {
                                 Ok(_) => {}
@@ -137,6 +142,12 @@ pub async fn run() {
                             collisions.update_animal_grid(animals.instances().as_slice());
                             collisions.update_plant_grid(plants.instances());
                             collisions.update_fruit_grid(fruit.instances());
+
+                            temp_map = TemperatureMap::new(collisions.cells_height);
+                            temp_map.set(sim_params.temp.plant_spawner_temp, plant_spawners.instances());
+                            temp_map.set(sim_params.temp.fruit_spawner_temp, fruit_spawners.instances());
+                            temp_map.update(sim_params.temp.spread,sim_params.temp.smooth,&rocks.rocks);
+
                             state = State::RunSim;
                         }
                         State::NewSim =>{
@@ -157,7 +168,7 @@ pub async fn run() {
                             fruit = environment::fruit::Fruits::genesis();
                             species_list = environment::species::SpeciesList::default();
 
-                            rocks = RockMap::new(&collisions);
+                            rocks = RockMap::new(collisions.cells_height);
                             plant_spawners = PlantSpawners{ bodies: vec![] };
                             fruit_spawners = FruitSpawners{ bodies: vec![] };
 
@@ -169,6 +180,11 @@ pub async fn run() {
                             plant_spawners.random(&sim_params);
 
                             highlighter = Highlighter::default();
+
+                            temp_map = TemperatureMap::new(collisions.cells_height);
+                            temp_map.set(sim_params.temp.plant_spawner_temp, plant_spawners.instances());
+                            temp_map.set(sim_params.temp.fruit_spawner_temp, fruit_spawners.instances());
+                            temp_map.update(sim_params.temp.spread,sim_params.temp.smooth,&rocks.rocks);
 
                             state = State::RunSim;
                         }
@@ -262,30 +278,47 @@ pub async fn run() {
                                     }
                                 }
                                 else if inputs.left_mouse {
-                                    if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
-                                    if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params); }
-                                    if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params); }
+                                    let mut update = false;
+                                    update = update || if sim_params.build.place_rock { rocks.set(1, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size) } else { false };
+                                    update = update || if sim_params.build.place_fruit_spawner { fruit_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params) } else { false };
+                                    update = update || if sim_params.build.place_plant_spawner { plant_spawners.place(camera.screen_to_world_pos(inputs.mouse_pos),&sim_params) } else { false };
 
-                                    plants.remove_plants_in_walls(&rocks);
-                                    fruit.remove_plants_in_walls(&rocks);
-                                    collisions.update_plant_grid(plants.instances());
-                                    collisions.update_fruit_grid(fruit.instances());
+                                    if update {
+                                        plants.remove_plants_in_walls(&rocks);
+                                        fruit.remove_plants_in_walls(&rocks);
+
+                                        collisions.update_plant_grid(plants.instances());
+                                        collisions.update_fruit_grid(fruit.instances());
+
+                                        temp_map.clear();
+                                        temp_map.set(sim_params.temp.plant_spawner_temp, plant_spawners.instances());
+                                        temp_map.set(sim_params.temp.fruit_spawner_temp, fruit_spawners.instances());
+                                        temp_map.update(sim_params.temp.spread,sim_params.temp.smooth,&rocks.rocks);
+                                    }
                                 } else if inputs.right_mouse {
-                                    if sim_params.build.place_rock { rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size); }
-                                    if sim_params.build.place_fruit_spawner { fruit_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
-                                    if sim_params.build.place_plant_spawner { plant_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)); }
+                                    let mut update = false;
+                                    update = update || if sim_params.build.place_rock { rocks.set(0, camera.screen_to_world_pos(inputs.mouse_pos), sim_params.build.pen_size) } else { false };
+                                    update = update || if sim_params.build.place_fruit_spawner { fruit_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)) } else { false };
+                                    update = update || if sim_params.build.place_plant_spawner { plant_spawners.remove(camera.screen_to_world_pos(inputs.mouse_pos)) } else { false };
+
+                                    if update {
+                                        temp_map.clear();
+                                        temp_map.set(sim_params.temp.plant_spawner_temp, plant_spawners.instances());
+                                        temp_map.set(sim_params.temp.fruit_spawner_temp, fruit_spawners.instances());
+                                        temp_map.update(sim_params.temp.spread,sim_params.temp.smooth,&rocks.rocks);
+                                    }
                                 }
                             }
 
                             camera.update(&inputs,&renderer.size(),follow,&inspected_animal);
 
-                            let circle_count = (eggs.count() + plants.count() + fruit.count() + highlighter.count()) as u32;
-                            let square_count = rocks.count() + (plant_spawners.count() + fruit_spawners.count()) as u32;
-                            let triangle_count = animals.count() as u32;
-
                             let circles = [highlighter.instances().as_slice(),fruit.instances().as_slice(),eggs.instances().as_slice(),plants.instances().as_slice()].concat();
-                            let squares = [rocks.instances().as_slice(),fruit_spawners.instances().as_slice(),plant_spawners.instances().as_slice()].concat();
+                            let squares = [temp_map.instances().as_slice(),rocks.instances().as_slice(),fruit_spawners.instances().as_slice(),plant_spawners.instances().as_slice()].concat();
                             let triangles = animals.instances();
+
+                            let circle_count = circles.len() as u32;
+                            let square_count = squares.len() as u32;
+                            let triangle_count = triangles.len() as u32;
 
                             renderer.update(circle_count,square_count,triangle_count,circles,squares,triangles,camera);
 
