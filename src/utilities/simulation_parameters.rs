@@ -19,9 +19,14 @@ pub struct SimulationSettings {
 #[derive(Serialize,Deserialize,Clone)]
 pub struct BuildSettings {
     pub pen_size: i32,
-    pub place_fruit_spawner: bool,
-    pub place_plant_spawner: bool,
-    pub place_rock: bool,
+    pub pen: Pen,
+}
+#[derive(Serialize,Deserialize,Clone,PartialEq,Debug)]
+pub enum Pen{
+    None,
+    Rock,
+    PlantGenerator,
+    FruitGenerator,
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct PlantSettings {
@@ -121,9 +126,7 @@ impl Default for SimParams{
             },
             build: BuildSettings {
                 pen_size: 0,
-                place_fruit_spawner: false,
-                place_plant_spawner: false,
-                place_rock: false,
+                pen: Pen::None,
             },
             simulation: SimulationSettings {
                 steps_per_frame: 1

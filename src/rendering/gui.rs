@@ -13,7 +13,7 @@ use winit::window::Window;
 use crate::environment::animal::Animal;
 use crate::utilities::highlighter::{Condition, Highlighter, SelectedHighlight};
 use crate::utilities::save_system::SaveSystem;
-use crate::utilities::simulation_parameters::SimParams;
+use crate::utilities::simulation_parameters::{Pen, SimParams};
 use crate::utilities::state::State::{CreateSim, Exit, LoadSave, Menu, NewSim, RunSim, SaveSim};
 use crate::utilities::statistics::Stats;
 
@@ -684,30 +684,24 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .collapsible(false)
             .default_width(0.0)
             .show(ui, |ui| {
-                ui.heading("Terrain");
-                ui.separator();
+                egui::ComboBox::from_label("Pen")
+                    .selected_text(format!("{:?}", &sim_params.build.pen))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut  sim_params.build.pen, Pen::None, "None");
+                        ui.selectable_value(&mut  sim_params.build.pen, Pen::Rock, "Rock");
+                        ui.selectable_value(&mut sim_params.build.pen, Pen::PlantGenerator, "Plant Generator");
+                        ui.selectable_value(&mut  sim_params.build.pen, Pen::FruitGenerator, "Fruit Generator");
+                    });
 
-                ui.horizontal(|ui|{
-                    ui.label("Rock");
-                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_rock,""));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Pen size");
-                    ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
-                });
-
-                ui.separator();
-                ui.heading("Feeders");
-                ui.separator();
-
-                ui.horizontal(|ui|{
-                    ui.label("Plant generator");
-                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_plant_spawner,""));
-                });
-                ui.horizontal(|ui|{
-                    ui.label("Fruit generator");
-                    ui.add(egui::Checkbox::new(&mut sim_params.build.place_fruit_spawner,""));
-                });
+                match sim_params.build.pen {
+                    Pen::Rock =>{
+                        ui.horizontal(|ui|{
+                            ui.label("Pen size");
+                            ui.add(egui::DragValue::new(&mut sim_params.build.pen_size).clamp_range(0..=6));
+                        });
+                    },
+                    _ =>{},
+                }
             });
     }
     if toggles.highlighter_settings {
@@ -725,8 +719,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         ui.selectable_value(&mut highlighter.selected_highlight, SelectedHighlight::Size, "Size");
                         ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::Speed, "Speed");
                         ui.selectable_value(&mut  highlighter.selected_highlight, SelectedHighlight::Species, "Species");
-                    }
-                    );
+                    });
 
                 match highlighter.selected_highlight {
                     SelectedHighlight::Diet =>{
