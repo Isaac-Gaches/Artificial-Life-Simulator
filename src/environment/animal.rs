@@ -12,6 +12,7 @@ use crate::environment::fruit::Fruits;
 use crate::environment::rocks::RockMap;
 use crate::utilities::simulation_parameters::SimParams;
 use crate::environment::species::SpeciesList;
+use crate::environment::temperature::TemperatureMap;
 use crate::environment::vision::SensoryInput;
 use crate::rendering::instance::Instance;
 
@@ -31,6 +32,9 @@ pub struct Animal{
     pub reproduction_stats: ReproductionStats,
     pub combat_stats: CombatStats,
     pub age: f32,
+    pub temperature: f32,
+    pub temp_tolerance: f32,
+    pub ideal_temp: f32
 }
 
 impl Animal{
@@ -44,8 +48,8 @@ impl Animal{
         new_animal.maturity = 0.;
         new_animal.generation = self.generation+1;
         new_animal.age = 0.;
-        new_animal.resources.protein = self.reproduction_stats.offspring_investment * self.lean_mass * 0.2;
-        new_animal.resources.energy = 100. + self.reproduction_stats.offspring_investment * 20.;
+        new_animal.resources.protein = new_animal.lean_mass*0.2*(new_animal.reproduction_stats.offspring_investment);
+        new_animal.resources.energy = (new_animal.reproduction_stats.offspring_investment+0.5)*new_animal.lean_mass*5.0;
 
         new_animal.brain.network.mutate(sim_params.animals.brain_mutation_strength/100.,sim_params.animals.brain_mutation_rate/100.);
 
@@ -58,6 +62,8 @@ impl Animal{
         if rng.gen_bool(mutation_rate) { new_animal.senses.plant_vision = (new_animal.senses.plant_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
         if rng.gen_bool(mutation_rate) { new_animal.senses.rock_vision = (new_animal.senses.rock_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
         if rng.gen_bool(mutation_rate) { new_animal.senses.fruit_vision = (new_animal.senses.fruit_vision + 12. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 12.); }
+        if rng.gen_bool(mutation_rate) { new_animal.temp_tolerance = (new_animal.temp_tolerance + 14. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(1.0, 15.); }
+        if rng.gen_bool(mutation_rate) { new_animal.ideal_temp = (new_animal.ideal_temp + 35. * rng.gen_range(-mutation_strength..=mutation_strength)).clamp(0.0, 35.); }
 
         if rng.gen_bool(mutation_rate) {
             new_animal.hue = (new_animal.hue + rng.gen_range(-mutation_strength..=mutation_strength)).rem_euclid(1.);
@@ -155,6 +161,8 @@ impl Animals{
         let resources = Resources{ energy: 2000.0, protein: 0.0, max_energy: body.scale * 20000., max_protein: body.scale * 400. };
         let reproduction_stats = ReproductionStats{ offspring_investment: rng.gen_range(0.0..10.0), birth_timer: 0.0};
         let combat_stats = CombatStats{ carnivore_factor: rng.gen_range(0.0..=1.0), aggression: 0.0, attack: max_stats.attack * 0.5, speed: max_stats.speed * 0.5, };
+        let ideal_temp = rng.gen_range(0.0..=35.0);
+        let temp_tolerance = rng.gen_range(1.0..=15.0);
 
         let animal = Animal{
             id: self.next_free_id,
@@ -171,6 +179,9 @@ impl Animals{
             reproduction_stats,
             combat_stats,
             age: 0.0,
+            temperature: ideal_temp,
+            temp_tolerance,
+            ideal_temp,
         };
 
         self.next_free_id += 1;
@@ -185,7 +196,7 @@ impl Animals{
         });
     }
 
-    pub fn update(&mut self, plants: &mut Plants,fruit: &mut Fruits, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap){
+    pub fn update(&mut self, plants: &mut Plants,fruit: &mut Fruits, eggs: &mut Eggs,sim_params: &mut SimParams,collisions: &Collisions, species_list: &mut SpeciesList,rock_map: &RockMap, temp_map: &TemperatureMap){
         for i in 0..self.count(){
             let input = self.animals.index(i).senses.stimulus(&plants.bodies,&fruit.bodies,&self.animals.index(i).body,&self.animals,self.animals.index(i),collisions,rock_map);
 
@@ -195,10 +206,10 @@ impl Animals{
 
             animal.brain.network.input(input);
 
-            if animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > (100. + (animal.reproduction_stats.offspring_investment * 20.)) * sim_params.animals.reproduction_energy_cost + animal.resources.max_energy * 0.3 && animal.resources.protein > animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment*sim_params.animals.reproduction_energy_cost{
+            if animal.maturity == 10. && animal.reproduction_stats.birth_timer <= 0. && animal.resources.energy > ((animal.reproduction_stats.offspring_investment/10.)+0.5)*animal.lean_mass*5.0 * sim_params.animals.reproduction_energy_cost + animal.resources.max_energy * 0.3 && animal.resources.protein > animal.lean_mass*0.2*((animal.reproduction_stats.offspring_investment/10.)+0.5) * sim_params.animals.reproduction_protein_cost{
                 animal.reproduction_stats.birth_timer = (10. + animal.reproduction_stats.offspring_investment * 4.) * sim_params.animals.reproduction_time;
-                animal.resources.energy -= (100. + (animal.reproduction_stats.offspring_investment * 20.)) * sim_params.animals.reproduction_energy_cost;
-                animal.resources.protein -= animal.lean_mass*0.2*animal.reproduction_stats.offspring_investment * sim_params.animals.reproduction_protein_cost;
+                animal.resources.energy -= ((animal.reproduction_stats.offspring_investment/10.)+0.5)*animal.lean_mass*5.0 * sim_params.animals.reproduction_energy_cost;
+                animal.resources.protein -= animal.lean_mass*0.4*((animal.reproduction_stats.offspring_investment/10.)+0.5) * sim_params.animals.reproduction_protein_cost;
 
                 let mut offspring = animal.offspring(sim_params,species_list);
                 offspring.id = self.next_free_id;
@@ -209,7 +220,8 @@ impl Animals{
             }
         }
 
-        let arc = Arc::new(rock_map);
+        let arc_rocks = Arc::new(rock_map);
+        let arc_temperature = Arc::new(temp_map);
 
         self.animals.par_iter_mut().for_each(|animal|{
             let response = animal.brain.network.propagate();
@@ -246,7 +258,7 @@ impl Animals{
             animal.body.position[0] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.cos() * animal.combat_stats.speed * sim_params.animals.movement_speed;
 
             let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
-            if arc.rocks[i] > 0{
+            if arc_rocks.rocks[i] > 0{
                 animal.body.position[0] = start;
             }
 
@@ -254,8 +266,16 @@ impl Animals{
             animal.body.position[1] += response.index(0).min(1.0) * 0.008 * animal.body.rotation.sin() * animal.combat_stats.speed * sim_params.animals.movement_speed;
 
             let i = (animal.body.position[0] * DIV) as usize * collisions.cells_height + (animal.body.position[1] * DIV) as usize;
-            if arc.rocks[i] > 0{
+            if arc_rocks.rocks[i] > 0{
                 animal.body.position[1] = start;
+            }
+
+            let temperature = arc_temperature.cells[i];
+            let temp_diff = temperature - animal.temperature;
+            animal.temperature += (temp_diff/sim_params.animals.temperature_sensitivity)/60.;
+
+            if (animal.temperature - animal.ideal_temp).abs() > animal.temp_tolerance{
+                animal.resources.energy -= 1.0;
             }
 
             animal.body.rotation += response.index(1).min(1.0) * 0.04 * animal.combat_stats.speed * sim_params.animals.turning_speed;
@@ -272,9 +292,9 @@ impl Animals{
 
             if animal.reproduction_stats.birth_timer > 0. { animal.reproduction_stats.birth_timer -= 1./60.; }
 
-            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass*0.2  {
+            if animal.maturity < 10. && animal.resources.protein > animal.lean_mass*0.3  {
                 animal.maturity += 1.;
-                animal.resources.protein -= animal.lean_mass*0.2;
+                animal.resources.protein -= animal.lean_mass*0.3;
                 animal.combat_stats.attack = animal.max_stats.attack * (0.5 + animal.maturity * 0.05);
                 animal.combat_stats.speed = animal.max_stats.speed * (0.5 + animal.maturity * 0.05);
                 animal.body.scale = animal.max_stats.size * (0.5 + animal.maturity * 0.05);

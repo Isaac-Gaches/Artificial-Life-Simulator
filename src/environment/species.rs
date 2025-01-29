@@ -18,10 +18,10 @@ pub struct SpeciesList{
     species: Vec<Species>,
 }
 impl SpeciesList{
-    pub fn speciate(&mut self, child: &Animal,parent_id: usize,sim_params: &SimParams) -> usize{
-        if parent_id == 0 || self.species[parent_id -1].specimen.brain.network.compare(&child.brain.network) > sim_params.animals.speciation_threshold{
+    pub fn speciate(&mut self, child: &Animal,parent_species_id: usize,sim_params: &SimParams) -> usize{
+        if parent_species_id == 0 || self.species[parent_species_id -1].specimen.brain.network.compare(&child.brain.network) > sim_params.animals.speciation_threshold{
             let new_species = Species{
-                parent: parent_id,
+                parent: parent_species_id,
                 specimen: child.clone(),
                 count: 1,
             };
@@ -29,8 +29,8 @@ impl SpeciesList{
             self.species.len()
         }
         else{
-            self.species[parent_id -1].count += 1;
-            parent_id
+            self.species[parent_species_id -1].count += 1;
+            parent_species_id
         }
     }
     pub fn count(&self)->usize{

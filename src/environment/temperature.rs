@@ -10,7 +10,7 @@ use crate::rendering::instance::Instance;
 #[derive(Serialize,Deserialize,Clone)]
 pub struct TemperatureMap{
     pub instances: Vec<Instance>,
-    cells: Vec<f32>,
+    pub cells: Vec<f32>,
     size: usize
 }
 impl  TemperatureMap{
@@ -32,17 +32,20 @@ impl  TemperatureMap{
         for x in 1..self.size-1{
             for y in 1..self.size-1{
                 let mut avg = 0.;
+                let mut k = 0.;
                 for i in -1..=1{
                     for j in -1..=1{
                         let n = ((x as i32+i) * self.size as i32 + (y as i32+j)) as usize;
-                        avg += self.cells[n];
-                        if rocks[n] != 0 {
-                            avg -= 0.8;
+                        if rocks[n] == 0 {
+                            avg += self.cells[n];
+                            k += 1.;
                         }
                     }
                 }
-                avg/=9.;
-                new_temp[x * self.size + y] = avg;
+                if k > 0. {
+                    avg /= k;
+                    new_temp[x * self.size + y] = avg;
+                }
             }
         }
         self.cells = new_temp;

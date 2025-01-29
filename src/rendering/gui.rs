@@ -234,7 +234,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                 toggles.simulation_settings = !toggles.simulation_settings;
             }
 
-            ui.add(egui::DragValue::new(&mut sim_params.temp.smooth).clamp_range(0..=80));
+            ui.add(egui::DragValue::new(&mut sim_params.temp.spread).clamp_range(0.1..=0.99).speed(0.01));
 
             ui.separator();
             ui.heading("System");
@@ -349,13 +349,16 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Offspring invest: {:.2}", animal.reproduction_stats.offspring_investment)));
                             ui.label(RichText::new(format!("Birth recovery (s): {:.2}", animal.reproduction_stats.birth_timer)));
-                            ui.label(RichText::new(format!("Aggression: {:.2}", animal.combat_stats.aggression)));
+                            ui.label(RichText::new(format!("Temperature: {:.2}", animal.temperature)));
+                            ui.label(RichText::new(format!("Ideal temp: {:.2}", animal.ideal_temp)));
+                            ui.label(RichText::new(format!("Temp tolerance: {:.2}", animal.temp_tolerance)));
                         });
                         ui.vertical(|ui|{
                             ui.label(RichText::new(format!("Speed: {:.2}", animal.combat_stats.speed)));
                             ui.label(RichText::new(format!("Size: {:.2}", animal.body.scale)));
                             ui.label(RichText::new(format!("Carnivore factor: {:.2}", animal.combat_stats.carnivore_factor)));
                             ui.label(RichText::new(format!("Attack: {:.2}", animal.combat_stats.attack)));
+                            ui.label(RichText::new(format!("Aggression: {:.2}", animal.combat_stats.aggression)));
                         });
                     });
                 }

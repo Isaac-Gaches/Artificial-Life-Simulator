@@ -75,6 +75,7 @@ pub struct AnimalSettings{
     pub reproduction_protein_cost: f32,
     pub reproduction_energy_cost: f32,
     pub lifespan: f32,
+    pub temperature_sensitivity: f32
 }
 #[derive(Serialize,Deserialize,Clone)]
 pub struct WorldSettings{
@@ -123,6 +124,7 @@ impl Default for SimParams{
                 reproduction_protein_cost: 1.0,
                 reproduction_energy_cost: 1.0,
                 lifespan: 1.0,
+                temperature_sensitivity: 60.0,
             },
             build: BuildSettings {
                 pen_size: 0,
@@ -139,8 +141,8 @@ impl Default for SimParams{
                 generate_terrain: true,
             },
             temp: TemperatureSettings {
-                spread: 0.95,
-                smooth: 10,
+                spread: 0.97,
+                smooth: 20,
                 min: 0.0,
                 plant_spawner_temp: 15.0,
                 fruit_spawner_temp: 45.0,

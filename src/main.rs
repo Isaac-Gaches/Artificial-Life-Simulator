@@ -238,13 +238,10 @@ pub async fn run() {
                                             fruit.spawn_random(&rocks, &collisions, &sim_params);
                                         }
 
-                                        if animals.count() < 20 {
-                                            animals.spawn(&sim_params);
-                                            animals.spawn(&sim_params);
-                                            animals.spawn(&sim_params);
-                                            animals.spawn(&sim_params);
-                                            animals.spawn(&sim_params);
-                                            animals.spawn(&sim_params);
+                                        if animals.count() < 40 {
+                                            for _ in 0..20{
+                                                animals.spawn(&sim_params);
+                                            }
                                         }
                                     }
 
@@ -262,7 +259,7 @@ pub async fn run() {
 
                                     collisions.handle_collisions(&mut animals, &mut plants, &mut fruit, &sim_params);
                                     eggs.update(&mut animals);
-                                    animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks);
+                                    animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks,&temp_map);
 
                                     step += 1;
                                 }
