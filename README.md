@@ -11,6 +11,6 @@ I wrote this project for my OCR A-Level Computer Science NEA.
 
 • How to use WGPU to write a custom render pipeline.
 
-• Designing GUI using EGUI that includes graphs generated from simulation data.
+• Designing simple GUI using EGUI that includes graphs generated from simulation data.
 
 This was a big learning curve and the biggest takeaway was to really plan a large project, its structure and its milestones before making it.
