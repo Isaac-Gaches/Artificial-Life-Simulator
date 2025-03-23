@@ -324,7 +324,7 @@ impl Animals{
             }
 
             animal.age+=1./60.;
-            if animal.age > animal.max_stats.size * 5760. * sim_params.animals.lifespan{
+            if animal.age > 36000. * sim_params.animals.lifespan{
                 animal.resources.energy = 0.;
             }
         });
@@ -344,7 +344,7 @@ impl Animals{
     }
 
     fn animal_collision(&mut self,animal_id: usize,other_animal_id: usize,efficiency: f32,){
-        let efficiency = (1.0/(-3.* self.animals[animal_id].combat_stats.carnivore_factor -1.2) + 1.235) * efficiency;
+        let efficiency = (1.0-0.7*(self.animals[animal_id].combat_stats.carnivore_factor-1.).powf(2.)) * efficiency;
 
         let (energy,protein) =
             ((self.animals.index(other_animal_id).resources.energy + self.animals.index(other_animal_id).lean_mass * 5.) * efficiency,
@@ -358,13 +358,13 @@ impl Animals{
     }
 
     pub fn handle_plant_collision(&mut self, animal_id: usize, resources: (f32,f32),efficiency: f32){
-        let efficiency = (1.0 - 0.7 * self.animals[animal_id].combat_stats.carnivore_factor) * efficiency;
+        let efficiency = (1.2+0.8*(self.animals[animal_id].combat_stats.carnivore_factor-1.).powf(2.)) * efficiency;
 
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }
 
-    pub fn handle_fruit_collision(&mut self, animal_id: usize, resources: (f32,f32)){
-        let efficiency = 1.0/(2.* self.animals[animal_id].combat_stats.carnivore_factor -3.5) + 1.285;
+    pub fn handle_fruit_collision(&mut self, animal_id: usize, resources: (f32,f32),efficiency:f32){
+        let efficiency = (1.0-1.8*(self.animals[animal_id].combat_stats.carnivore_factor-0.4).powf(2.)) * efficiency;
         self.animals[animal_id].resources.add((resources.0 * efficiency,resources.1 * efficiency));
     }
 

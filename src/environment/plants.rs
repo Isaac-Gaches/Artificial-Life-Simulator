@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 use std::ops::{Index, IndexMut};
-use cgmath::num_traits::Float;
+//use cgmath::num_traits::Float;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::environment::collisions::{CELL_SIZE, Collisions, DIV};
@@ -37,7 +37,7 @@ impl PlantSpawners {
         }
     }
     pub fn place(&mut self,pos: [f32;2], sim_params: &SimParams) -> bool{
-        if pos[0] > CELL_SIZE && pos[1] > CELL_SIZE && pos[0] < sim_params.world.width - CELL_SIZE && pos[1] < sim_params.world.height - CELL_SIZE && self.bodies.iter().find(|body| [(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5] == body.position).is_none(){
+        if pos[0] > CELL_SIZE && pos[1] > CELL_SIZE && pos[0] < sim_params.world.width - CELL_SIZE && pos[1] < sim_params.world.height - CELL_SIZE && !self.bodies.iter().any(|body| [(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5] == body.position){
             self.bodies.push(Instance::new([(pos[0] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5, (pos[1] * DIV - 0.5).round() * CELL_SIZE + CELL_SIZE * 0.5], [0.0, 0.7, 0.0], PI / 4., CELL_SIZE * 0.9));
             return true
         }

@@ -546,10 +546,10 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self,circle_count: u32,square_count: u32, triangle_count: u32,circles: Vec<Instance>,squares: Vec<Instance>,triangles: Vec<Instance>/*, animals: &Animals,plants: &Plants,fruit: &Fruits,eggs: &Eggs,rocks: &RockMap*/,camera: Camera/*, fruit_spawners: &FruitSpawners,plant_spawners: &PlantSpawners*/){
-        self.buffers.circle_count = circle_count;
-        self.buffers.square_count = square_count;
-        self.buffers.triangle_count = triangle_count;
+    pub fn update(&mut self,circles: Vec<Instance>,squares: Vec<Instance>,triangles: Vec<Instance>,camera: Camera){
+        self.buffers.circle_count = circles.len() as u32;
+        self.buffers.square_count = squares.len() as u32;
+        self.buffers.triangle_count = triangles.len() as u32;
 
         self.queue.write_buffer(&self.buffers.circles, 0, bytemuck::cast_slice(circles.as_slice()));
         self.queue.write_buffer(&self.buffers.squares, 0, bytemuck::cast_slice(squares.as_slice()));

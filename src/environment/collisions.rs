@@ -25,7 +25,7 @@ pub struct Cell{
     pub object_ids: Vec<usize>,
 }
 impl Cell{
-    fn index(&self,i: usize) -> usize{
+    pub(crate) fn index(&self, i: usize) -> usize{
         self.object_ids[i]
     }
     fn clear(&mut self){
@@ -81,11 +81,11 @@ impl Collisions{
                     let animal_id = self.animals_grid[x * self.cells_height + y].index(z);
                     let animal_body = animals.animals[animal_id].body;
 
-                    //animals
+                    //plants
                     for i in 0..3{
                         for j in 0..3{
                             let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
-
+                            //animal
                             for k in 0..self.animals_grid[grid_index].count(){
                                 if k == z {continue}
                                 let other_animal_id = self.animals_grid[grid_index].index(k);
@@ -99,14 +99,7 @@ impl Collisions{
                                     animals.handle_animal_collision(animal_id,other_animal_id,sim_params.animals.carnivory_efficiency);
                                 }
                             }
-                        }
-                    }
-
-                    //plants
-                    for i in 0..3{
-                        for j in 0..3{
-                            let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
-
+                            //plant
                             for k in 0..self.plants_grid[grid_index].count(){
                                 let plant_id = self.plants_grid[grid_index].index(k);
                                 if plants.plants[plant_id].eaten{
@@ -123,14 +116,7 @@ impl Collisions{
                                 }
 
                             }
-                        }
-                    }
-
-                    //fruit
-                    for i in 0..3{
-                        for j in 0..3{
-                            let grid_index = (x+i).saturating_sub(1) * self.cells_height + (y+j).saturating_sub(1);
-
+                            //fruit
                             for k in 0..self.fruit_grid[grid_index].count(){
                                 let fruit_id = self.fruit_grid[grid_index].index(k);
                                 if fruit.fruit[fruit_id].eaten{
@@ -143,7 +129,7 @@ impl Collisions{
 
                                 if (relative_pos_x * relative_pos_x + relative_pos_y * relative_pos_y) < 0.05 * animal_body.scale && !fruit.fruit[fruit_id].eaten{
                                     let resources = fruit.handle_collision(fruit_id,sim_params);
-                                    animals.handle_fruit_collision(animal_id,resources);
+                                    animals.handle_fruit_collision(animal_id,resources,sim_params.animals.herbivory_efficiency);
                                 }
                             }
                         }

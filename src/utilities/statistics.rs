@@ -123,7 +123,7 @@ impl Stats{
             self.populations.omnivores.push([self.step as f64, omni]);
             self.populations.carnivores.push([self.step as f64, carn]);
 
-            if animals.len() > 0 {
+            if !animals.is_empty() {
                 avg_speed /= animals.len() as f32;
                 avg_size /= animals.len() as f32;
             }

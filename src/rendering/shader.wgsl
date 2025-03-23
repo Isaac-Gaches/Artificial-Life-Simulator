@@ -64,7 +64,7 @@ fn vs_circle(
 
 @fragment
 fn fs_circle(in: CircleVertexOutput) -> @location(0) vec4<f32> {
-    if (in.vert_position.x) * (in.vert_position.x) + (in.vert_position.y) * (in.vert_position.y) > 0.25{
+    if in.vert_position.x * in.vert_position.x + in.vert_position.y * in.vert_position.y > 0.25{
         return vec4<f32>(0.0,0.,0.,0.);
     }
     return vec4<f32>(in.color, 1.0);

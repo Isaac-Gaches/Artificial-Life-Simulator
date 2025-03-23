@@ -8,13 +8,12 @@ use epaint::{CircleShape, Rect, Shape};
 use wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
-use winit::keyboard::NamedKey::New;
 use winit::window::Window;
 use crate::environment::animal::Animal;
 use crate::utilities::highlighter::{Condition, Highlighter, SelectedHighlight};
 use crate::utilities::save_system::SaveSystem;
 use crate::utilities::simulation_parameters::{Pen, SimParams};
-use crate::utilities::state::State::{CreateSim, Exit, LoadSave, Menu, NewSim, RunSim, SaveSim};
+use crate::utilities::state::State::{CreateSim, Exit, LoadSave, Menu, NewSim, SaveSim};
 use crate::utilities::statistics::Stats;
 
 #[derive(Default)]
@@ -30,6 +29,7 @@ pub struct Toggles{
     highlighter_settings: bool,
     populations: Populations,
     highlight_selected: bool,
+    temperature_settings: bool,
 }
 #[derive(Default)]
 pub struct Populations{
@@ -233,8 +233,9 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             if ui.selectable_label(toggles.simulation_settings, RichText::new("Simulation Settings").heading()).clicked(){
                 toggles.simulation_settings = !toggles.simulation_settings;
             }
-
-            ui.add(egui::DragValue::new(&mut sim_params.temp.spread).clamp_range(0.1..=0.99).speed(0.01));
+            if ui.selectable_label(toggles.temperature_settings, RichText::new("Temperature Settings").heading()).clicked(){
+                toggles.temperature_settings = !toggles.temperature_settings;
+            }
 
             ui.separator();
             ui.heading("System");
@@ -251,6 +252,30 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             }
         });
 
+    if toggles.temperature_settings{
+        egui::Window::new("Temperature settings")
+            .resizable(false)
+            .collapsible(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui|{
+                    ui.label("Spread");
+                    ui.add(egui::DragValue::new(&mut sim_params.temp.spread).clamp_range(0.1..=0.99).speed(0.01));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Smooth");
+                    ui.add(egui::DragValue::new(&mut sim_params.temp.smooth).clamp_range(0..=50));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Plant Generator Temp");
+                    ui.add(egui::DragValue::new(&mut sim_params.temp.plant_spawner_temp).clamp_range(0..=50));
+                });
+                ui.horizontal(|ui|{
+                    ui.label("Fruit Generator Temp");
+                    ui.add(egui::DragValue::new(&mut sim_params.temp.fruit_spawner_temp));
+                });
+            });
+    }
+
     if toggles.animal_inspect {
         egui::Window::new("Network")
             .default_width(550.0)
@@ -259,15 +284,15 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
             .show(ui, |ui| {
                 if let Some(animal) = animal {
                     ui.horizontal(|ui| {
-                        ui.label("  Plant vision ");
+                        ui.label("Plant vision       ");
                         ui.separator();
-                        ui.label("             Animal vision             ");
+                        ui.label("       Fruit vision      ");
                         ui.separator();
-                        ui.label("Rock vision");
+                        ui.label("            Animal vision            ");
                         ui.separator();
-                        ui.label("Internal state");
+                        ui.label("                Rock vision               ");
                         ui.separator();
-                        ui.label("      Endocrine");
+                        ui.label("Internal");
                     });
                     Frame::canvas(ui.style()).show(ui, |ui| {
                         let (response, painter) = ui.allocate_painter(Vec2::new(ui.available_width(), ui.available_width() * 0.5), Sense::hover());
@@ -329,6 +354,7 @@ pub fn gui(ui: &Context,stats: &mut Stats,toggles: &mut Toggles,sim_params: &mut
 
                     ui.horizontal(|ui|{
                         ui.vertical(|ui|{
+                            ui.label(RichText::new(format!("Id: {}", animal.id)));
                             ui.label(RichText::new(format!("Species: {}", animal.species_id)));
                             ui.label(RichText::new(format!("Maturity: {}", animal.maturity)));
                             ui.label(RichText::new(format!("Age (min): {:.2}", animal.age/60.)));

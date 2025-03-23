@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 pub struct Network{
     pub layers: Vec<Layer>,
 }
+
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Layer{
     pub neurons: Vec<Neuron>,
 }
+
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Neuron{
     pub activation: f32,
@@ -22,18 +24,20 @@ impl Network{
         });
     }
     pub fn propagate(&mut self) -> Vec<f32>{
-        let mut inputs = self.layers[0].activations();
+        let inputs = self.layers[0].activations();
 
-        for i in 1..self.layers.len(){
-            inputs = self.layers[i].propagate(inputs);
-        }
-
-        inputs
+        self.layers.iter_mut().skip(1).fold(inputs,|inputs,layer|{
+            layer.propagate(inputs)
+        })
     }
     pub fn random(layers: &[usize]) -> Self{
         let mut layers = layers.to_vec();
         layers.insert(0,0);
-        let layers = layers.windows(2).map(|layers| { Layer::random(layers[0], layers[1]) }).collect();
+
+        let layers = layers.windows(2).map(|layers| {
+            Layer::random(layers[0], layers[1])
+        }).collect();
+
         Self { layers }
     }
     pub fn mutate(&mut self,strength: f32,probability: f32){
@@ -56,10 +60,12 @@ impl Layer{
         self.neurons.iter().map(|neuron| neuron.activation).collect()
     }
     fn propagate(&mut self,inputs: Vec<f32>) -> Vec<f32>{
-        self.neurons.iter_mut().map(|neuron| neuron.propagate(&inputs)).collect()
+        self.neurons.iter_mut()
+            .map(|neuron| neuron.propagate(&inputs)).collect()
     }
     fn random(input_size: usize, output_size: usize) -> Self{
         let neurons = (0..output_size).map(|_| Neuron::random(input_size)).collect();
+
         Self { neurons }
     }
     fn zero(input_size: usize, output_size: usize) -> Self{
@@ -77,17 +83,19 @@ impl Neuron{
     fn propagate(&mut self,inputs: &[f32]) -> f32{
         self.activation = 0.;
 
-        let input = inputs.iter().zip(&self.weights).map(|(input, weight)| input * weight).sum::<f32>();
-        //self.activation = (input+self.bias).tanh();
+        let input = inputs.iter().zip(&self.weights)
+            .map(|(input, weight)| input * weight).sum::<f32>();
         self.activation = (input+self.bias).max(0.);
 
         self.activation
     }
     fn random(input_size: usize) -> Self {
         let mut rng = rand::thread_rng();
-        let decay = rng.gen_range(-1.0..=1.0);
+
+        let bias = rng.gen_range(-1.0..=1.0);
         let weights = (0..input_size).map(|_| rng.gen_range(-1.0..=1.0)).collect();
-        Self { activation: 0.0, weights, bias: decay }
+
+        Self { activation: 0.0, weights, bias }
     }
     fn zero(input_size: usize) -> Self {
         let weights = vec![0.;input_size];

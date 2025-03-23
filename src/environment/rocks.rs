@@ -1,11 +1,10 @@
-use std::ops::Index;
 use rand::{Rng, thread_rng};
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 use simdnoise::NoiseBuilder;
-use crate::environment::collisions::{CELL_SIZE, Collisions, DIV};
+use crate::environment::collisions::{CELL_SIZE, DIV};
 use crate::rendering::instance::Instance;
 
 #[derive(Serialize, Deserialize,Clone)]
@@ -39,11 +38,16 @@ impl RockMap{
     pub fn randomise(&mut self){
         let seed = thread_rng().gen_range(-100000..100000);
 
-        let noise = NoiseBuilder::fbm_2d_offset(seed as f32,self.width,seed as f32, self.height).with_seed(seed).with_freq(0.1).generate_scaled(0.0, 1.0);
-        let noise2 = NoiseBuilder::fbm_2d_offset(seed as f32,self.width,seed as f32, self.height).with_seed(seed).with_freq(0.02).generate_scaled(0.0, 1.0);
+        let high_freq_noise = NoiseBuilder::fbm_2d_offset(seed as f32, self.width, seed as f32, self.height)
+            .with_seed(seed).with_freq(0.1)
+            .generate_scaled(0.0, 1.0);
+
+        let low_freq_noise = NoiseBuilder::fbm_2d_offset(seed as f32, self.width, seed as f32, self.height)
+            .with_seed(seed).with_freq(0.02)
+            .generate_scaled(0.0, 1.0);
 
         for i in 0..self.rocks.len(){
-            if *noise.index(i) > 0.85 || (*noise2.index(i) > 0.51 && *noise2.index(i) < 0.56){
+            if high_freq_noise[i] > 0.85 || (low_freq_noise[i] > 0.51 && low_freq_noise[i] < 0.56){
                 self.rocks[i] =1 ;
             }
         }

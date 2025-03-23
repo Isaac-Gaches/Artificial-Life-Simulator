@@ -255,11 +255,11 @@ pub async fn run() {
                                         highlighter.set_highlights(&animals);
                                     }
 
-                                    highlighter.move_highlights(&animals);
-
                                     collisions.handle_collisions(&mut animals, &mut plants, &mut fruit, &sim_params);
                                     eggs.update(&mut animals);
                                     animals.update(&mut plants,&mut fruit, &mut eggs, &mut sim_params, &collisions, &mut species_list, &rocks,&temp_map);
+
+                                    highlighter.move_highlights(&animals);
 
                                     step += 1;
                                 }
@@ -328,15 +328,30 @@ pub async fn run() {
 
                             camera.update(&inputs,&renderer.size(),follow,&inspected_animal);
 
+/*                            if let Some(animal) = &inspected_animal {
+                                let x = (animal.body.position[0] * DIV) as usize;
+                                let y = (animal.body.position[1] * DIV) as usize;
+
+                                for i in 0..3 {
+                                    for j in 0..3 {
+                                        let grid_index = (x + i).saturating_sub(1) * collisions.cells_height + (y + j).saturating_sub(1);
+
+                                        for k in 0..collisions.animals_grid[grid_index].count() {
+                                            let id = collisions.animals_grid[grid_index].index(k);
+                                            let id = animals.animals[id].id;
+                                            if id != animal.id{
+                                                println!("potential collision id: {}",id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }*/
+
                             let circles = [highlighter.instances().as_slice(),fruit.instances().as_slice(),eggs.instances().as_slice(),plants.instances().as_slice()].concat();
                             let squares = [temp_map.instances().as_slice(),rocks.instances().as_slice(),fruit_spawners.instances().as_slice(),plant_spawners.instances().as_slice()].concat();
                             let triangles = animals.instances();
 
-                            let circle_count = circles.len() as u32;
-                            let square_count = squares.len() as u32;
-                            let triangle_count = triangles.len() as u32;
-
-                            renderer.update(circle_count,square_count,triangle_count,circles,squares,triangles,camera);
+                            renderer.update(circles,squares,triangles,camera);
 
                             match renderer.render(&mut stats,&mut sim_params,&inspected_animal,&mut state,&mut highlighter) {
                                 Ok(_) => {}

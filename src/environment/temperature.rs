@@ -3,8 +3,6 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 use crate::environment::collisions::{CELL_SIZE, DIV};
-use crate::environment::fruit::FruitSpawners;
-use crate::environment::plants::PlantSpawners;
 use crate::rendering::instance::Instance;
 
 #[derive(Serialize,Deserialize,Clone)]
